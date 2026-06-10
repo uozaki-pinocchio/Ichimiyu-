@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>命式と五格 — 四柱推命・姓名判断</title>
+<!--
+  ============================================================
+  四柱推命・姓名判断 運勢分析ツール
+  ============================================================
+  【採用体系】
+  ◆四柱推命：子平命理ベースの日本標準方式
+    ・年柱  ：立春（節入り時刻）切替
+    ・月柱  ：二十四節気の「節」で切替、月干は五虎遁
+    ・日柱  ：六十干支の通日計算（ユリウス日基準）
+    ・時柱  ：刻の十二支＋五鼠遁
+    ・節入り：太陽視黄経の天文近似計算（精度±十数分程度）
+    ・日界  ：デフォルト23時切替（設定で0時切替可）※流派差あり
+    ・時差  ：デフォルト補正なし（設定で経度補正＋均時差補正可）
+    ・蔵干  ：デフォルト月律分野蔵干（設定で本気のみに切替可）※流派差大
+    ・大運  ：年干陰陽×性別で順逆、立運＝節入りまでの日数÷3（1捨2入）
+  ◆姓名判断：熊崎式（五格剖象法）
+    ・モードA（デフォルト）：旧字体（康熙字典）画数＋霊数あり＋数字漢字は字義数
+    ・モードB：新字体実画数＋霊数なし＋数字漢字も実画数
+    ※画数・霊数・数字ルールはモードで丸ごと連動（ねじれ防止）
+    ※収録外の字や流派差のある字は、画数を手動修正できる
+  ============================================================
+-->
+<style>
+  /* ===== デザイントークン ===== */
+  :root{
+    --paper:#f3f5f4;        /* 白磁：背景 */
+    --card:#ffffff;
+    --ink:#2a2e35;          /* 墨：本文 */
+    --ink-soft:#5b6470;
+    --ai:#26425e;           /* 鉄紺：主色 */
+    --ai-deep:#1b3144;
+    --kichi:#a8842f;        /* 金茶：吉 */
+    --kyo:#9c4035;          /* 蘇芳：凶 */
+    --hankichi:#7a7440;     /* 半吉 */
+    --line:#d8dcd9;
+    /* 五行色（伝統五色を現代調に） */
+    --wood:#4a7c59; --fire:#c0564a; --earth:#b08a3e; --metal:#8a8f98; --water:#34506e;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{font-size:16px}
+  body{
+    font-family:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    background:var(--paper); color:var(--ink); line-height:1.85;
+    -webkit-font-smoothing:antialiased; padding-bottom:64px;
+  }
+  .serif{font-family:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif}
+
+  /* ===== ヘッダー ===== */
+  header{
+    background:linear-gradient(160deg,var(--ai-deep),var(--ai));
+    color:#f2f0e8; padding:34px 20px 28px; text-align:center;
+  }
+  header h1{font-family:"Shippori Mincho",serif;font-weight:600;font-size:1.7rem;letter-spacing:.18em}
+  header p{font-size:.8rem;opacity:.78;letter-spacing:.12em;margin-top:6px}
+
+  main{max-width:760px;margin:0 auto;padding:18px 14px}
+
+  /* ===== カード ===== */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:20px 18px;margin:14px 0}
+  .card h2{font-family:"Shippori Mincho",serif;font-size:1.15rem;color:var(--ai-deep);
+    letter-spacing:.14em;border-bottom:2px solid var(--ai);padding-bottom:8px;margin-bottom:14px}
+  .card h3{font-size:.95rem;color:var(--ai);letter-spacing:.08em;margin:18px 0 6px}
+  .note{font-size:.78rem;color:var(--ink-soft);line-height:1.7}
+
+  /* ===== フォーム ===== */
+  label.fl{display:block;font-size:.82rem;color:var(--ink-soft);margin:12px 0 4px;letter-spacing:.06em}
+  input[type=text],input[type=date],input[type=time],input[type=number],select{
+    width:100%;padding:11px 12px;font-size:1rem;border:1px solid var(--line);
+    border-radius:10px;background:#fbfbfa;color:var(--ink)}
+  input:focus-visible,select:focus-visible,button:focus-visible{
+    outline:3px solid rgba(38,66,94,.45);outline-offset:1px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .chkline{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:.88rem}
+  details.adv{margin-top:16px;border-top:1px dashed var(--line);padding-top:12px}
+  details.adv summary{cursor:pointer;font-size:.85rem;color:var(--ai);letter-spacing:.06em}
+  .btn{
+    display:block;width:100%;margin-top:20px;padding:14px;
+    background:var(--ai);color:#f2f0e8;border:none;border-radius:12px;
+    font-size:1.05rem;letter-spacing:.22em;font-family:"Shippori Mincho",serif;cursor:pointer}
+  .btn:active{background:var(--ai-deep)}
+
+  /* ===== 命式：四本柱（シグネチャ要素） ===== */
+  .pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 4px}
+  .pillar{
+    background:linear-gradient(180deg,#fdfdfc,#f4f3ef);
+    border:1px solid var(--line);border-radius:10px;
+    padding:12px 4px;text-align:center;position:relative}
+  .pillar .pname{font-size:.7rem;color:var(--ink-soft);letter-spacing:.2em}
+  .pillar .kanshi{
+    font-family:"Shippori Mincho",serif;font-size:1.9rem;line-height:1.15;
+    writing-mode:vertical-rl;margin:8px auto 6px;color:var(--ai-deep);
+    letter-spacing:.1em;min-height:4.2em}
+  .pillar .sub{font-size:.68rem;color:var(--ink-soft);line-height:1.5}
+  .pillar .sub b{color:var(--ai);font-weight:600}
+
+  /* ===== 五行バー ===== */
+  .gobar{margin:6px 0}
+  .gobar .gname{display:inline-block;width:3.2em;font-size:.82rem}
+  .gtrack{display:inline-block;width:calc(100% - 6.4em);height:12px;background:#ecedea;
+    border-radius:6px;vertical-align:middle;overflow:hidden}
+  .gfill{height:100%;border-radius:6px}
+  .gnum{display:inline-block;width:2.6em;text-align:right;font-size:.8rem;color:var(--ink-soft)}
+
+  /* ===== 解説セクション ===== */
+  .topic{border-left:4px solid var(--ai);padding:2px 0 2px 12px;margin:20px 0}
+  .topic h3{margin:0 0 6px;font-family:"Shippori Mincho",serif;font-size:1rem;color:var(--ai-deep);letter-spacing:.1em}
+  .topic p{font-size:.92rem;margin:8px 0}
+
+  /* ===== 大運タイムライン ===== */
+  .taiun{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:8px}
+  .taiun table{border-collapse:collapse;min-width:560px;width:100%;font-size:.82rem}
+  .taiun th,.taiun td{border:1px solid var(--line);padding:6px 8px;text-align:center;white-space:nowrap}
+  .taiun th{background:#eef0ee;color:var(--ai-deep);font-weight:600}
+  .taiun .fav{background:rgba(168,132,47,.13)}
+
+  /* ===== 姓名判断 ===== */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+  .chip{background:#fbfaf6;border:1px solid var(--line);border-radius:10px;
+    padding:8px 10px;text-align:center;min-width:64px}
+  .chip .ch{font-family:"Shippori Mincho",serif;font-size:1.5rem;color:var(--ai-deep)}
+  .chip input{width:54px;margin-top:4px;text-align:center;padding:5px;font-size:.95rem;
+    border:1px solid var(--line);border-radius:8px}
+  .chip.unknown input{border-color:var(--kyo);background:#fdf3f1}
+  .chip .lab{font-size:.66rem;color:var(--ink-soft);margin-top:2px}
+
+  .goka{width:100%;border-collapse:collapse;font-size:.88rem;margin-top:8px}
+  .goka th,.goka td{border:1px solid var(--line);padding:8px 6px;text-align:center}
+  .goka th{background:#eef0ee;color:var(--ai-deep)}
+  .rate{font-family:"Shippori Mincho",serif;font-weight:700}
+  .r-daikichi{color:var(--kichi)} .r-kichi{color:#8a7430}
+  .r-hankichi{color:var(--hankichi)} .r-kyo{color:var(--kyo)} .r-daikyo{color:#7c2f26}
+
+  .badge{display:inline-block;font-size:.7rem;padding:2px 9px;border-radius:99px;
+    border:1px solid var(--line);color:var(--ink-soft);margin-left:8px;vertical-align:middle}
+
+  .err{color:var(--kyo);font-size:.85rem;margin-top:10px}
+  #results{display:none}
+  .fadein{animation:fade .5s ease both}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion: reduce){.fadein{animation:none}}
+  @media (max-width:430px){
+    .pillar .kanshi{font-size:1.55rem}
+    html{font-size:15px}
+  }
+  footer{max-width:760px;margin:30px auto 0;padding:0 18px;font-size:.72rem;color:var(--ink-soft);line-height:1.8}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header>
+  <h1>命式と五格</h1>
+  <p>四柱推命（子平・日本標準方式） × 姓名判断（熊崎式）</p>
+</header>
+
+<main>
+
+  <!-- ============ 入力フォーム ============ -->
+  <section class="card" id="formCard">
+    <h2>鑑定情報の入力</h2>
+
+    <div class="row2">
+      <div>
+        <label class="fl" for="sei">姓</label>
+        <input type="text" id="sei" placeholder="例：石原" autocomplete="off">
+      </div>
+      <div>
+        <label class="fl" for="mei">名</label>
+        <input type="text" id="mei" placeholder="例：みゆき" autocomplete="off">
+      </div>
+    </div>
+
+    <label class="fl" for="bdate">生年月日</label>
+    <input type="date" id="bdate" min="1900-01-01" max="2099-12-31">
+
+    <div class="row2">
+      <div>
+        <label class="fl" for="btime">出生時刻</label>
+        <input type="time" id="btime">
+      </div>
+      <div>
+        <label class="fl" for="gender">性別</label>
+        <select id="gender">
+          <option value="F">女性</option>
+          <option value="M">男性</option>
+        </select>
+      </div>
+    </div>
+    <div class="chkline">
+      <input type="checkbox" id="timeUnknown">
+      <label for="timeUnknown">出生時刻が不明（時柱なしの三柱で鑑定）</label>
+    </div>
+
+    <label class="fl" for="targetYear">運勢を見たい年（任意・西暦）</label>
+    <input type="number" id="targetYear" placeholder="例：2026" min="1900" max="2099">
+
+    <label class="fl" for="seimeiMode">姓名判断モード</label>
+    <select id="seimeiMode">
+      <option value="A">熊崎式・本格モード（旧字体画数／霊数あり／数字漢字は字義数）</option>
+      <option value="B">現代・実画数モード（新字体画数／霊数なし／数字も実画数）</option>
+    </select>
+    <p class="note">画数・霊数・数字漢字の数え方はモードに連動して丸ごと切り替わります（混在によるねじれを防ぐため、個別変更はできません）。</p>
+
+    <details class="adv">
+      <summary>四柱推命の詳細設定（流派差のある箇所）</summary>
+      <label class="fl" for="dayBoundary">日界（1日の始まり）</label>
+      <select id="dayBoundary">
+        <option value="23">23時切替（子の刻起点・本ソフト標準）</option>
+        <option value="0">0時切替</option>
+      </select>
+      <label class="fl" for="solarTimeMode">真太陽時補正</label>
+      <select id="solarTimeMode">
+        <option value="none">補正なし（日本標準時のまま・本ソフト標準）</option>
+        <option value="true">補正あり（経度補正＋均時差）</option>
+      </select>
+      <div id="lonBox" style="display:none">
+        <label class="fl" for="lon">出生地の東経（度）</label>
+        <input type="number" id="lon" value="135.0" step="0.1" min="122" max="146">
+        <p class="note">日本標準時の基準は東経135度（明石）。神戸はほぼ135.2度。補正には季節による均時差（最大±16分前後）も含まれます。</p>
+      </div>
+      <label class="fl" for="zokanMode">蔵干の取り方</label>
+      <select id="zokanMode">
+        <option value="bunya">月律分野蔵干（節入りからの日数で余気・中気・本気／日本の万年暦標準）</option>
+        <option value="honki">本気のみ（簡略方式）</option>
+      </select>
+      <p class="note">蔵干は流派差が特に大きい項目です。本ソフトの分野日数表は日本の万年暦で広く使われる区分を採用しています（巳・午・申・亥は文献により異同あり）。</p>
+    </details>
+
+    <button class="btn" id="runBtn" type="button">鑑 定 す る</button>
+    <p class="err" id="errMsg"></p>
+  </section>
+
+  <!-- ============ 結果表示 ============ -->
+  <div id="results">
+
+    <section class="card fadein" id="meishikiCard">
+      <h2>四柱推命 — 命式</h2>
+      <div class="pillars" id="pillarsBox"></div>
+      <p class="note" id="meishikiNote"></p>
+      <h3>五行のバランス</h3>
+      <div id="gogyoBox"></div>
+      <p class="note" id="gogyoNote"></p>
+      <div id="strengthBox" class="note" style="margin-top:8px"></div>
+    </section>
+
+    <section class="card fadein" id="kaisetsuCard">
+      <h2>四柱推命 — 各論</h2>
+      <div id="topicsBox"></div>
+    </section>
+
+    <section class="card fadein" id="taiunCard">
+      <h2>人生の運気の波（大運）</h2>
+      <div id="taiunText"></div>
+      <div class="taiun"><table id="taiunTable"></table></div>
+      <p class="note">大運は約10年ごとに巡る運の節目です。立運（最初の切り替わり年齢）は、生まれた日から節入りまでの日数を3で割る日本で一般的な方式（余り1は切り捨て・余り2は切り上げ）で算出しています。色付きの期間は、身強・身弱の簡易判定から見て追い風になりやすい時期の目安です。</p>
+    </section>
+
+    <section class="card fadein" id="ryunenCard" style="display:none">
+      <h2 id="ryunenTitle">指定年の運勢（流年）</h2>
+      <div id="ryunenBox"></div>
+    </section>
+
+    <section class="card fadein" id="seimeiCard">
+      <h2>姓名判断 — 五格 <span class="badge" id="modeBadge"></span></h2>
+      <p class="note">各文字の画数は下のチップで確認・修正できます。収録外の字（赤枠）は画数を入力してください。修正すると自動で再計算されます。</p>
+      <h3>姓</h3><div class="chips" id="seiChips"></div>
+      <h3>名</h3><div class="chips" id="meiChips"></div>
+      <table class="goka" id="gokaTable"></table>
+      <div id="gokaTexts"></div>
+      <h3>三才配置（参考）</h3>
+      <div id="sansaiBox"></div>
+      <p class="note" id="seimeiFootNote"></p>
+    </section>
+
+  </div>
+
+</main>
+
+<footer>
+  <p>本ツールの解説は伝統的な命理・姓名学の分類に基づく「傾向」の記述であり、運命を断定するものではありません。節入り時刻は天文近似計算（精度±十数分程度）によるため、節入り直前直後の出生は専門の暦での再確認をおすすめします。四柱推命の流派差（日界・真太陽時・蔵干）と姓名判断の流派差（画数基準・霊数・数字漢字）は設定で切り替えられます。</p>
+</footer>
+
+<script>
+"use strict";
+/* ============================================================
+   第1部：基本定数（十干・十二支・五行・各種対応表）
+   ============================================================ */
+
+// 十干（インデックス0〜9）
+const STEMS = ["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
+// 十干の五行（0木 1火 2土 3金 4水）
+const STEM_ELEM = [0,0,1,1,2,2,3,3,4,4];
+// 十干の陰陽（true=陽）
+const STEM_YANG = [true,false,true,false,true,false,true,false,true,false];
+
+// 十二支（インデックス0〜11）
+const BRANCHES = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+// 十二支の五行（本気ベース：子水 丑土 寅木 卯木 辰土 巳火 午火 未土 申金 酉金 戌土 亥水）
+const BRANCH_ELEM = [4,2,0,0,2,1,1,2,3,3,2,4];
+
+const ELEM_NAMES = ["木","火","土","金","水"];
+const ELEM_COLORS = ["var(--wood)","var(--fire)","var(--earth)","var(--metal)","var(--water)"];
+
+// 通変星の名称
+const TSUHEN = ["比肩","劫財","食神","傷官","偏財","正財","偏官","正官","偏印","印綬"];
+
+// 十二運の名称
+const JUNIUN = ["長生","沐浴","冠帯","建禄","帝旺","衰","病","死","墓","絶","胎","養"];
+// 各十干の「長生」が始まる支（火土同根：戊は寅、己は酉 — 日本標準）
+const CHOSEI_START = {0:11, 1:6, 2:2, 3:9, 4:2, 5:9, 6:5, 7:0, 8:8, 9:3};
+// 甲=亥(11) 乙=午(6) 丙=寅(2) 丁=酉(9) 戊=寅(2) 己=酉(9) 庚=巳(5) 辛=子(0) 壬=申(8) 癸=卯(3)
+
+/* 月律分野蔵干表（日本の万年暦標準）
+   各支ごとに [干index, 節入りからの日数] の配列。最後の要素が本気（残り全部）。
+   ※巳・午・申・亥の日数区分は文献により異同あり（コメント参照） */
+const ZOKAN_TABLE = {
+  0:[[8,10],[9,99]],            // 子：壬10日 → 癸（本気）
+  1:[[9,9],[7,3],[5,99]],       // 丑：癸9日 → 辛3日 → 己（本気）
+  2:[[4,7],[2,7],[0,99]],       // 寅：戊7日 → 丙7日 → 甲（本気）
+  3:[[0,10],[1,99]],            // 卯：甲10日 → 乙（本気）
+  4:[[1,9],[9,3],[4,99]],       // 辰：乙9日 → 癸3日 → 戊（本気）
+  5:[[4,7],[6,7],[2,99]],       // 巳：戊7日 → 庚7日 → 丙（本気）※戊5日とする流派あり
+  6:[[2,10],[5,9],[3,99]],      // 午：丙10日 → 己9日 → 丁（本気）※己10日とする流派あり
+  7:[[3,9],[1,3],[5,99]],       // 未：丁9日 → 乙3日 → 己（本気）
+  8:[[5,7],[8,7],[6,99]],       // 申：己7日 → 壬7日 → 庚（本気）※己を戊とする流派あり
+  9:[[6,10],[7,99]],            // 酉：庚10日 → 辛（本気）
+  10:[[7,9],[3,3],[4,99]],      // 戌：辛9日 → 丁3日 → 戊（本気）
+  11:[[4,7],[0,7],[8,99]]       // 亥：戊7日 → 甲7日 → 壬（本気）※甲5日とする流派あり
+};
+
+// 二十四節気のうち「節」12個：[名称, 太陽黄経(度), 月支index]
+// 寅月=立春315°から始まる
+const SETSU = [
+  ["立春",315,2],["啓蟄",345,3],["清明",15,4],["立夏",45,5],
+  ["芒種",75,6],["小暑",105,7],["立秋",135,8],["白露",165,9],
+  ["寒露",195,10],["立冬",225,11],["大雪",255,0],["小寒",285,1]
+];
+</script>
+<script>
+"use strict";
+/* ============================================================
+   第2部：暦・天文計算（ユリウス日、太陽黄経、節入り、四柱算出）
+   ============================================================ */
+
+// --- グレゴリオ暦の年月日 → ユリウス通日（JDN：その日の正午基準の整数） ---
+function toJDN(y, m, d){
+  const a = Math.floor((14 - m) / 12);
+  const y2 = y + 4800 - a;
+  const m2 = m + 12 * a - 3;
+  return d + Math.floor((153 * m2 + 2) / 5) + 365 * y2
+       + Math.floor(y2 / 4) - Math.floor(y2 / 100) + Math.floor(y2 / 400) - 32045;
+}
+
+// --- 日本標準時の年月日時分 → ユリウス日（UT基準の連続値） ---
+// 天文計算用。JST = UT + 9時間 なので 9/24 を引く。ΔT（約1分強）は占術用途では無視。
+function toJD_UT(y, m, d, hh, mm){
+  return toJDN(y, m, d) - 0.5 + (hh + mm / 60) / 24 - 9 / 24;
+}
+
+// --- JDN → 年月日（表示用・JST暦日） ---
+function fromJDN(jdn){
+  let a = jdn + 32044;
+  const b = Math.floor((4 * a + 3) / 146097);
+  const c = a - Math.floor(146097 * b / 4);
+  const dd = Math.floor((4 * c + 3) / 1461);
+  const e = c - Math.floor(1461 * dd / 4);
+  const mq = Math.floor((5 * e + 2) / 153);
+  const day = e - Math.floor((153 * mq + 2) / 5) + 1;
+  const month = mq + 3 - 12 * Math.floor(mq / 10);
+  const year = 100 * b + dd - 4800 + Math.floor(mq / 10);
+  return {y: year, m: month, d: day};
+}
+
+const D2R = Math.PI / 180;
+function sinD(x){ return Math.sin(x * D2R); }
+function cosD(x){ return Math.cos(x * D2R); }
+function norm360(x){ x = x % 360; return x < 0 ? x + 360 : x; }
+
+// --- 太陽の視黄経（度）：Meeus簡易式。精度は約0.01度（時間にして十数分相当） ---
+function sunLongitude(jd){
+  const T = (jd - 2451545.0) / 36525.0;
+  const L0 = 280.46646 + 36000.76983 * T + 0.0003032 * T * T;       // 平均黄経
+  const M  = 357.52911 + 35999.05029 * T - 0.0001537 * T * T;       // 平均近点角
+  const C  = (1.914602 - 0.004817 * T - 0.000014 * T * T) * sinD(M)
+           + (0.019993 - 0.000101 * T) * sinD(2 * M)
+           + 0.000289 * sinD(3 * M);                                 // 中心差
+  const trueL = L0 + C;
+  const omega = 125.04 - 1934.136 * T;
+  const lambda = trueL - 0.00569 - 0.00478 * sinD(omega);            // 視黄経（章動・光行差補正）
+  return norm360(lambda);
+}
+
+// --- 指定の太陽黄経（targetDeg）に達する瞬間のJD(UT)を、近似初期値から反復で求める ---
+function findTermJD(targetDeg, approxJD){
+  let jd = approxJD;
+  for(let i = 0; i < 10; i++){
+    const lon = sunLongitude(jd);
+    let diff = targetDeg - lon;
+    while(diff > 180) diff -= 360;
+    while(diff < -180) diff += 360;
+    jd += diff / 0.98565;   // 太陽は1日あたり約0.9856度進む
+    if(Math.abs(diff) < 1e-6) break;
+  }
+  return jd;
+}
+
+// --- 出生瞬間のJD(UT)に対し、その直前の節入り（＝所属する月）を求める ---
+// 返り値：{branch:月支index, setsuName, termJD_UT:節入り瞬間, nextTermJD_UT:次の節入り瞬間}
+function findMonthSetsu(jdBirthUT){
+  const lon = sunLongitude(jdBirthUT);
+  // 立春315°を起点に、現在の黄経がどの「節」区間にいるか
+  const offset = norm360(lon - 315);          // 立春からの経過角度
+  const idx = Math.floor(offset / 30);        // 0=寅月, 1=卯月, ...
+  const setsu = SETSU[idx];
+  // この節入りの瞬間：出生から逆算（経過角度÷日速 だけ遡った付近を初期値に）
+  let termJD = findTermJD(setsu[1], jdBirthUT - (offset - 30 * idx) / 0.98565);
+  if(termJD > jdBirthUT + 1e-6) termJD -= 365.2422; // まれな収束ズレの保険
+  // 次の節入り
+  const nextSetsu = SETSU[(idx + 1) % 12];
+  let nextJD = findTermJD(nextSetsu[1], termJD + 30.44);
+  return {branch: setsu[2], setsuName: setsu[0], termJD_UT: termJD, nextTermJD_UT: nextJD,
+          prevIdx: idx};
+}
+
+// --- その年の立春の瞬間（JD, UT） ---
+function risshunJD(year){
+  return findTermJD(315, toJD_UT(year, 2, 4, 12, 0));
+}
+
+// --- 均時差（分）：NOAA近似式。真太陽時補正オプションで使用 ---
+function equationOfTime(y, m, d){
+  const start = toJDN(y, 1, 1);
+  const doy = toJDN(y, m, d) - start;            // 年初からの通日（0始まり）
+  const g = 2 * Math.PI / 365 * (doy + 0.5);
+  return 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g)
+                 - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+}
+
+/* ============================================================
+   四柱の算出
+   ============================================================ */
+
+// 六十干支のindex(0=甲子)から名称
+function kanshiName(i){ return STEMS[i % 10] + BRANCHES[i % 12]; }
+
+/**
+ * 命式を計算する中心関数
+ * @param {Object} p {y,m,d,hh,mm, timeKnown, gender('M'/'F'),
+ *                    dayBoundary(23|0), solarCorr(bool), lon, zokanMode('bunya'|'honki')}
+ */
+function calcMeishiki(p){
+  // ---- 真太陽時補正（オプション）----
+  // 補正は「時柱の刻の判定」と「日界の判定」に用いる。
+  // 節入りとの比較は天体現象との比較なので、補正前のJST実時刻で行う。
+  let adjMin = p.hh * 60 + p.mm;
+  let corrInfo = null;
+  if(p.solarCorr){
+    const lonCorr = 4 * (p.lon - 135);                 // 経度1度＝4分
+    const eot = equationOfTime(p.y, p.m, p.d);          // 均時差（分）
+    adjMin += lonCorr + eot;
+    corrInfo = {lonCorr: lonCorr, eot: eot};
+  }
+  // 補正後の暦日・時刻（日跨ぎ処理）
+  let adjY = p.y, adjM = p.m, adjD = p.d;
+  let dayShift = 0;
+  if(adjMin < 0){ adjMin += 1440; dayShift = -1; }
+  else if(adjMin >= 1440){ adjMin -= 1440; dayShift = 1; }
+  const adjHH = Math.floor(adjMin / 60), adjMM = Math.round(adjMin % 60);
+
+  // ---- 出生瞬間（節入り比較用：補正なしのJST実時刻） ----
+  const jdBirthUT = toJD_UT(p.y, p.m, p.d, p.timeKnown ? p.hh : 12, p.timeKnown ? p.mm : 0);
+  // 時刻不明時は正午と仮定して年柱・月柱・日柱を求める（節入り当日のみ影響。注記を出す）
+
+  // ---- 年柱：立春切替 ----
+  let pillarYear = p.y;
+  const rsThis = risshunJD(p.y);
+  if(jdBirthUT < rsThis) pillarYear = p.y - 1;
+  const yStem = ((pillarYear - 4) % 10 + 10) % 10;
+  const yBranch = ((pillarYear - 4) % 12 + 12) % 12;
+
+  // ---- 月柱：節で切替、月干は五虎遁 ----
+  const ms = findMonthSetsu(jdBirthUT);
+  const mBranch = ms.branch;
+  // 寅月からのオフセット（寅=0, 卯=1, ... 丑=11）
+  const offsetFromTora = (mBranch - 2 + 12) % 12;
+  // 五虎遁：甲己→丙寅起、乙庚→戊寅、丙辛→庚寅、丁壬→壬寅、戊癸→甲寅
+  const mStem = (((yStem % 5) * 2 + 2) + offsetFromTora) % 10;
+
+  // ---- 日柱：通日計算。日界の扱いはモードに従う ----
+  let dayJDN = toJDN(adjY, adjM, adjD) + dayShift;
+  let lateNight = false;
+  if(p.timeKnown && p.dayBoundary === 23 && adjHH >= 23){
+    dayJDN += 1;            // 23時以降は翌日の日干支（子の刻起点）
+    lateNight = true;
+  }
+  // 検証済みアンカー：1949-10-01＝甲子、2000-01-01＝戊午 → (JDN+49)%60
+  const dIdx = ((dayJDN + 49) % 60 + 60) % 60;
+  const dStem = dIdx % 10, dBranch = dIdx % 12;
+
+  // ---- 時柱：刻の十二支＋五鼠遁 ----
+  let hStem = null, hBranch = null;
+  if(p.timeKnown){
+    hBranch = Math.floor(((adjHH * 60 + adjMM + 60) % 1440) / 120);
+    // 五鼠遁：甲己→甲子起、乙庚→丙子、丙辛→戊子、丁壬→庚子、戊癸→壬子
+    hStem = ((dStem % 5) * 2 + hBranch) % 10;
+  }
+
+  // ---- 蔵干 ----
+  // 節入りからの経過日数（数え：節入り当日を1日目とする）
+  const elapsedDays = Math.floor(jdBirthUT - ms.termJD_UT) + 1;
+  function getZokan(branch, useBunya){
+    const tbl = ZOKAN_TABLE[branch];
+    if(!useBunya) return tbl[tbl.length - 1][0];     // 本気のみ
+    let acc = 0;
+    for(const [stem, days] of tbl){
+      acc += days;
+      if(elapsedDays <= acc) return stem;
+    }
+    return tbl[tbl.length - 1][0];
+  }
+  // 月支のみ月律分野を適用、他の支は本気（日本の一般的な扱い）
+  const useBunya = (p.zokanMode === 'bunya');
+  const zokan = {
+    year:  getZokanSimple(yBranch),
+    month: useBunya ? getZokan(mBranch, true) : getZokanSimple(mBranch),
+    day:   getZokanSimple(dBranch),
+    hour:  (hBranch !== null) ? getZokanSimple(hBranch) : null
+  };
+  function getZokanSimple(branch){
+    const tbl = ZOKAN_TABLE[branch];
+    return tbl[tbl.length - 1][0];
+  }
+
+  return {
+    pillars: {
+      year:  {stem: yStem, branch: yBranch},
+      month: {stem: mStem, branch: mBranch},
+      day:   {stem: dStem, branch: dBranch},
+      hour:  (hStem !== null) ? {stem: hStem, branch: hBranch} : null
+    },
+    zokan: zokan,
+    setsu: ms,
+    elapsedDays: elapsedDays,
+    pillarYear: pillarYear,
+    lateNight: lateNight,
+    corrInfo: corrInfo,
+    adjTime: p.solarCorr ? {hh: adjHH, mm: adjMM} : null,
+    jdBirthUT: jdBirthUT,
+    input: p
+  };
+}
+
+/* ============================================================
+   通変星・十二運・干支の作用
+   ============================================================ */
+
+// 日干から見た相手の干の通変星（index 0-9）
+function tsuhenOf(dayStem, otherStem){
+  const de = STEM_ELEM[dayStem], oe = STEM_ELEM[otherStem];
+  const sameYY = (STEM_YANG[dayStem] === STEM_YANG[otherStem]);
+  if(de === oe)                 return sameYY ? 0 : 1;  // 比肩/劫財
+  if((de + 1) % 5 === oe)       return sameYY ? 2 : 3;  // 食神/傷官（日干が生じる）
+  if((de + 2) % 5 === oe)       return sameYY ? 4 : 5;  // 偏財/正財（日干が剋す）
+  if((oe + 2) % 5 === de)       return sameYY ? 6 : 7;  // 偏官/正官（日干を剋す）
+  return sameYY ? 8 : 9;                                 // 偏印/印綬（日干を生じる）
+}
+
+// 日干から見た支の十二運（index 0-11）
+function juniunOf(dayStem, branch){
+  const start = CHOSEI_START[dayStem];
+  if(STEM_YANG[dayStem]) return ((branch - start) % 12 + 12) % 12;   // 陽干は順行
+  return ((start - branch) % 12 + 12) % 12;                          // 陰干は逆行
+}
+
+// 干合（甲己・乙庚・丙辛・丁壬・戊癸）
+function isKango(a, b){ return (a + 5) % 10 === b || (b + 5) % 10 === a; }
+// 支冲（向かい合う支）
+function isChu(a, b){ return (a + 6) % 12 === b; }
+// 支合（子丑・寅亥・卯戌・辰酉・巳申・午未 → 和が12で割って1）
+function isShigo(a, b){ return (a + b) % 12 === 1 && a !== b; }
+
+/* ============================================================
+   五行バランスと身強・身弱（簡易判定）
+   ============================================================ */
+
+// 8点法：天干4つ＋地支の本気4つ（時柱なしなら6点）を数える
+function gogyoCount(mk){
+  const cnt = [0,0,0,0,0];
+  const ps = mk.pillars;
+  for(const key of ['year','month','day','hour']){
+    if(!ps[key]) continue;
+    cnt[STEM_ELEM[ps[key].stem]] += 1;
+    cnt[BRANCH_ELEM[ps[key].branch]] += 1;
+  }
+  return cnt;
+}
+
+// 身強・身弱の簡易判定
+// 月令（月支の分野蔵干が日干を助けるか）＋天干・地支に印星・比劫がいくつあるか
+function strengthJudge(mk){
+  const d = mk.pillars.day.stem;
+  const de = STEM_ELEM[d];
+  let score = 0;
+  const detail = [];
+  // 月令：月支蔵干（採用方式に従う）の五行が日干と同じ→+3、日干を生じる→+2
+  const mz = STEM_ELEM[mk.zokan.month];
+  if(mz === de){ score += 3; detail.push("月令を得る（同気）"); }
+  else if((mz + 1) % 5 === de){ score += 2; detail.push("月令の生を受ける"); }
+  // 他の干支：日干と同じ五行（比劫）+1、日干を生じる五行（印）+1
+  const ps = mk.pillars;
+  for(const key of ['year','month','hour']){
+    if(!ps[key]) continue;
+    const se = STEM_ELEM[ps[key].stem];
+    if(se === de || (se + 1) % 5 === de) score += 1;
+  }
+  for(const key of ['year','month','day','hour']){
+    if(!ps[key]) continue;
+    if(key === 'month') continue;  // 月支は月令で評価済み
+    const be = BRANCH_ELEM[ps[key].branch];
+    if(be === de || (be + 1) % 5 === de) score += 1;
+  }
+  // 閾値：時柱ありで最大10前後。5以上=身強、3-4=中和、2以下=身弱
+  let label, cls;
+  if(score >= 5){ label = "身強（自星の力が強め）"; cls = "strong"; }
+  else if(score >= 3){ label = "中和（バランス型）"; cls = "neutral"; }
+  else { label = "身弱（周囲の支えで伸びる型）"; cls = "weak"; }
+  return {score, label, cls, detail};
+}
+
+/* ============================================================
+   大運の計算
+   ============================================================ */
+function calcTaiun(mk){
+  const p = mk.input;
+  const yangYear = STEM_YANG[mk.pillars.year.stem];
+  const male = (p.gender === 'M');
+  const forward = (yangYear && male) || (!yangYear && !male);  // 陽男陰女=順行
+  // 立運：順行→次の節入りまでの日数、逆行→前の節入りからの日数（数え）
+  let days;
+  if(forward) days = Math.ceil(mk.setsu.nextTermJD_UT - mk.jdBirthUT);
+  else        days = Math.ceil(mk.jdBirthUT - mk.setsu.termJD_UT);
+  if(days < 1) days = 1;
+  // 3日＝1年。余り1は切り捨て、余り2は切り上げ（日本で一般的な簡便法）
+  let startAge = Math.floor(days / 3);
+  if(days % 3 === 2) startAge += 1;
+  if(startAge < 1) startAge = 1;
+
+  // 月柱の干支indexから順 or 逆に進める
+  const mIdx60 = kanshiIndex60(mk.pillars.month.stem, mk.pillars.month.branch);
+  const list = [];
+  for(let i = 1; i <= 8; i++){
+    const idx = ((mIdx60 + (forward ? i : -i)) % 60 + 60) % 60;
+    list.push({
+      fromAge: startAge + (i - 1) * 10,
+      toAge: startAge + i * 10 - 1,
+      stem: idx % 10, branch: idx % 12
+    });
+  }
+  return {forward, startAge, days, list};
+}
+
+// 干index・支indexから六十干支index（存在する組合せのみ）
+function kanshiIndex60(stem, branch){
+  for(let i = 0; i < 60; i++){
+    if(i % 10 === stem && i % 12 === branch) return i;
+  }
+  return -1;
+}
+
+/* ============================================================
+   流年（指定年の干支）
+   ============================================================ */
+function calcRyunen(targetYear){
+  const s = ((targetYear - 4) % 10 + 10) % 10;
+  const b = ((targetYear - 4) % 12 + 12) % 12;
+  return {stem: s, branch: b};
+}
+</script>
+<script>
+"use strict";
+/* ============================================================
+   第3部：四柱推命の解説テキスト群
+   断定を避け「〜の傾向」のトーンで統一
+   ============================================================ */
+
+// ---- 日干（本人の核）ごとの資質テキスト ----
+const NIKKAN_TEXT = [
+/*甲*/"大樹にたとえられる甲の日干を持つ人は、まっすぐ上へ伸びようとする向上心と、簡単には折れない芯の強さを備えている傾向があります。一度決めたことを着実に積み上げる持久力があり、周囲からは頼れる存在として見られやすいでしょう。一方で、柔軟に曲がることが苦手で、環境や相手に合わせるより自分の筋を通したくなる場面が多いかもしれません。プライドの高さが孤立につながらないよう、若木のしなやかさを意識すると器が広がる傾向があります。",
+/*乙*/"草花にたとえられる乙の日干を持つ人は、環境に合わせてしなやかに姿を変えながら、確実に根を張っていく柔軟な生命力を備えている傾向があります。物腰は柔らかいのに芯は粘り強く、踏まれても起き上がる雑草のようなたくましさが持ち味です。協調性が高く、人の間を縫って実利を得るのが上手な反面、表に立つより誰かに寄り添う形で力を発揮しやすいでしょう。依存と自立のバランスを意識できると、本来の粘り強さがより活きる傾向があります。",
+/*丙*/"太陽にたとえられる丙の日干を持つ人は、明るく開放的で、その場の空気を一気に温めるような存在感を備えている傾向があります。裏表が少なく、感情も意思もストレートに表れるため、周囲に元気や希望を与える役回りになりやすいでしょう。注目を浴びる場面で力を発揮する一方、地味な継続や細部の詰めには飽きやすい面があるかもしれません。照らす相手がいてこそ輝く性質なので、独りで抱え込むより人と関わる環境に身を置くと運が回りやすい傾向があります。",
+/*丁*/"灯火にたとえられる丁の日干を持つ人は、一見もの静かながら、内側に情熱と鋭い感受性を秘めている傾向があります。暗がりを照らす灯のように、細部に目が届き、人の心の機微を察する力に優れているでしょう。普段は控えめでも、ここぞという場面では驚くほどの集中力と粘りを見せる二面性があります。感情の燃え方にムラが出やすいため、心の火を絶やさない環境と、燃え尽きない休息の取り方が鍵になる傾向があります。",
+/*戊*/"山にたとえられる戊の日干を持つ人は、どっしりと構えて動じない安定感と包容力を備えている傾向があります。多少のことでは揺らがず、人やものを受け止めて守る器の大きさがあり、周囲から自然と頼られやすいでしょう。信頼を裏切らない誠実さがある一方、腰が重く、変化への対応や方向転換に時間がかかる面があるかもしれません。守りに入りすぎず、自分から動く場面を意識的に作ると、山の存在感がより活きる傾向があります。",
+/*己*/"田畑の土にたとえられる己の日干を持つ人は、人を育て、受け入れ、実りをもたらす滋養の力を備えている傾向があります。面倒見がよく、相手に合わせて自分の形を変えられる柔軟さがあり、組織や家庭の土台を支える役回りが似合うでしょう。控えめで目立ちにくい分、実力が正当に評価されるまで時間がかかることもあるかもしれません。何を育てるかで土の価値が決まるように、注ぐ対象を選ぶ目を持つと人生の実りが大きくなる傾向があります。",
+/*庚*/"鋼や刃物にたとえられる庚の日干を持つ人は、決断力と行動力に富み、物事を切り開いていく鋭さを備えている傾向があります。白黒をはっきりさせたい性分で、曖昧さや停滞を嫌い、困難に対してむしろ闘志が湧くタイプでしょう。鍛えられるほど切れ味を増す金属のように、逆境や試練を経て本領を発揮する傾向が強くあります。その鋭さが人を傷つける刃にならないよう、言葉の角を意識的に丸めることが対人面の鍵になりやすいでしょう。",
+/*辛*/"宝石にたとえられる辛の日干を持つ人は、繊細な美意識と研ぎ澄まされた感性を備えている傾向があります。完成度や質へのこだわりが強く、自分にも他人にも妥協しない厳しさを内に秘めているでしょう。プライドは高めですが、それは磨かれて輝きたいという本質の表れで、適切に評価される環境では大きく伸びる傾向があります。傷つきやすさを抱えながらも、痛みを経験するほど輝きが深まる原石のような人生観を持ちやすいでしょう。",
+/*壬*/"大河や海にたとえられる壬の日干を持つ人は、スケールの大きな発想力と、とどまらない行動力を備えている傾向があります。知恵が豊かで応用が利き、ひとつの場所に縛られず流れていくことで運が開けるタイプでしょう。包容力と冷静さを併せ持つ一方、気分の流れに任せすぎると方向性を見失いやすい面もあるかもしれません。流れを受け止める器、つまり目標や役割が定まると、大水の力が一気に推進力へ変わる傾向があります。",
+/*癸*/"雨や霧にたとえられる癸の日干を持つ人は、静かに大地へ染み込む雨のように、目立たぬ形で周囲を潤す知性と感受性を備えている傾向があります。観察力と直感が鋭く、物事の本質や人の内面を見抜く力に優れているでしょう。表立って主張するより、水面下で着実に準備を整えるのが得意で、忍耐強さは十干の中でも随一とされます。内に溜め込みやすい性質のため、感情や考えを安全に流す出口を持つことが心の健康の鍵になる傾向があります。"
+];
+
+// ---- 元命（月支蔵干の通変星）による性格の補足 ----
+const GENMEI_TEXT = [
+/*比肩*/"月支元命が比肩のため、独立心と自我の強さが性格の土台にある傾向があります。人に指図されることを好まず、自分のペースと領域を守ろうとする意識が強く、マイペースながら芯の通った生き方を志向しやすいでしょう。",
+/*劫財*/"月支元命が劫財のため、表向きは社交的で柔らかいのに、内面には強い負けん気と野心を秘めている傾向があります。外面と内面の使い分けが上手く、勝負どころでの粘りと度胸は相当なものでしょう。",
+/*食神*/"月支元命が食神のため、おおらかで楽しみ上手、衣食住や表現を味わう才に恵まれている傾向があります。あくせくせずとも必要なものが巡ってきやすい星で、好きなことに没頭しているときに最も力を発揮しやすいでしょう。",
+/*傷官*/"月支元命が傷官のため、鋭い感性と批評眼、人とは違うものを生み出す表現力が性格の核にある傾向があります。妥協のない美意識と反骨精神を持ち、型にはまった環境では息苦しさを感じやすい一方、創造の場では抜群の冴えを見せるでしょう。",
+/*偏財*/"月支元命が偏財のため、フットワークが軽く、人とお金を循環させる商才と社交性を備えている傾向があります。面倒見がよく場を回すのが得意で、動きながらチャンスをつかむタイプでしょう。",
+/*正財*/"月支元命が正財のため、誠実さと堅実さ、コツコツ積み上げる信用第一の気質が土台にある傾向があります。約束を守り、地道な努力を惜しまない姿勢が、時間をかけて確かな信頼と財産を築くでしょう。",
+/*偏官*/"月支元命が偏官のため、行動力と義侠心、困難に立ち向かう闘争心が性格の核にある傾向があります。じっとしているより動いてこそ調子が出るタイプで、責任を背負う場面や修羅場でかえって力を発揮しやすいでしょう。",
+/*正官*/"月支元命が正官のため、責任感と規範意識が強く、筋を通すことを重んじる気質が土台にある傾向があります。社会的な信用を自然と集めやすく、組織やルールの中で正攻法で評価されていくタイプでしょう。",
+/*偏印*/"月支元命が偏印のため、独自の発想力と探究心、人と同じことを嫌う知的好奇心が性格の核にある傾向があります。複数の興味を行き来しながら、専門外の知を結びつける異才型の頭脳を持ちやすいでしょう。",
+/*印綬*/"月支元命が印綬のため、学ぶこと・知ること・伝えることへの深い欲求が土台にある傾向があります。知識や教養を吸収して人に授ける星で、目上からの引き立てや知的な評価に恵まれやすいでしょう。"
+];
+
+// ---- 仕事・適職（元命通変星ベース） ----
+const WORK_TEXT = [
+/*比肩*/"独立自営、フリーランス、専門職、職人、士業、個人技で勝負するスポーツや研究職など、自分の裁量と責任で完結する働き方に向く傾向があります。組織に属する場合も、細かく管理されるより一定の領域を任される立場で力を発揮しやすいでしょう。共同経営や対等なパートナーシップでは主導権の所在を明確にしておくことが長続きの鍵になりやすく、誰かの下で型通りに動き続ける環境は消耗が大きいかもしれません。",
+/*劫財*/"営業、交渉、政治的な調整役、興行やプロデュース、投資関連など、対人の駆け引きと勝負勘が活きる仕事に向く傾向があります。外面の社交性で人脈を広げ、内面の闘志で結果を取りにいく二段構えが武器になるでしょう。単独プレーより、グループの先頭に立って引っ張る形や、共同事業の推進役で本領を発揮しやすい一方、金銭の貸し借りや保証が絡む話には慎重さが必要な星でもあります。",
+/*食神*/"飲食、製造、エンタメ、創作、サービス業、保育や教育など、人を楽しませ満たす分野に縁が深い傾向があります。遊び心と継続力を兼ねた星なので、好きなことを仕事にする道が最も伸びやすく、趣味の延長が収入源に育つことも珍しくないでしょう。ノルマと競争で追い立てられる環境より、自分の質とペースを保てる職場のほうが長期的な成果につながりやすいタイプです。",
+/*傷官*/"デザイン、企画、ライティング、芸術、技術職、コンサルティング、批評など、感性と専門性で勝負する仕事に強い適性が出やすい傾向があります。既存のやり方に疑問を持ち、より良い形を生み出す改革者の星で、裁量と自由度の高い環境ほど才能が冴えるでしょう。逆に、形式的なルールや理不尽な上下関係の濃い職場では才能が摩耗しやすいため、環境選びそのものが適職選びと言えるタイプです。",
+/*偏財*/"商売、営業、マーケティング、金融、流通、イベントや人を動かす仕事など、お金と人が活発に動く現場に向く傾向があります。座って待つより外へ出て回遊しながらチャンスを拾うスタイルが合っており、複数の収入源や副業とも相性がよいでしょう。社交の場そのものが営業活動になるタイプで、人に奢ったり投資した分が巡り巡って返ってくる循環型の金運と連動しやすい働き方です。",
+/*正財*/"経理、財務管理、事務、不動産、製造管理、品質保証、堅実な専門職など、正確さと信用が資本になる仕事に向く傾向があります。一攫千金より着実な積み上げで評価されるタイプで、長く勤めるほど信頼残高が増えていくでしょう。投機的な事業や変化の激しすぎる現場よりも、計画と実直さが報われる組織で安定して力を出しやすいタイプです。",
+/*偏官*/"現場指揮、起業、警察・消防・自衛など危機対応職、外科系、建設、スポーツ、困難案件の突破役など、行動力と胆力が求められる仕事に向く傾向があります。平穏な定型業務では持て余すエネルギーが、修羅場や締切の現場では頼もしさに変わるでしょう。トップダウンで動ける立場か、明確な使命を与えられる環境で輝きやすく、宙ぶらりんの待機状態が最も苦手なタイプです。",
+/*正官*/"公務、大企業の管理部門、法務、教育、医療など、社会的信用と秩序の中で評価される仕事に向く傾向があります。筋の通った正攻法で着実に昇進していく王道タイプで、責任ある役職に就くほど安定して力を発揮するでしょう。実力以上に「信頼できる人」という評価が職業人生を押し上げる星なので、地位や肩書を伴うキャリアパスを意識的に選ぶと運が活きやすいタイプです。",
+/*偏印*/"企画、研究、IT、医療・占術・心理など特殊専門分野、翻訳、芸能裏方など、独自の知と発想を売る仕事に向く傾向があります。ひとつの定職に縛られるより、複数の専門や副業を組み合わせる働き方で安定しやすい星でしょう。飽きやすさは弱点ではなく多動的な知性の表れなので、常に新しい課題が供給される環境を選ぶことが長続きの秘訣になりやすいタイプです。",
+/*印綬*/"教育、研究、執筆、企画、医療、カウンセリング、伝統文化など、知識と教養を深めて伝える仕事に強い適性が出やすい傾向があります。学んだことを体系化して人に授けるとき最も輝く星で、資格や学位がそのまま武器になるでしょう。現場の肉体労働や数字の追い込みより、頭脳と言葉で貢献する役回りが合っており、生涯学習がそのままキャリアの推進力になるタイプです。"
+];
+</script>
+<script>
+"use strict";
+/* ============================================================
+   第3部つづき：金運・恋愛・対人・健康・流年のテキスト
+   ============================================================ */
+
+// 通変星の短い意味（命式表のサブ表示用）
+const TSUHEN_SHORT = ["自立・我","競争・社交","遊楽・継続","感性・批評","商才・回転","堅実・蓄積","行動・闘志","信用・規範","発想・異才","学問・引立"];
+
+// 十二運の短い意味（流年・大運の補足用）
+const JUNIUN_SHORT = {
+  "長生":"物事が芽吹き育ち始める運気","沐浴":"変化と迷いを伴う移行期の運気","冠帯":"装い整え世に出る上昇運",
+  "建禄":"地に足のついた充実・自立の運気","帝旺":"力が頂点に達する最盛の運気","衰":"頂点を過ぎ落ち着きへ向かう運気",
+  "病":"内省と立て直しが似合う停滞気味の運気","死":"一区切りと整理の運気","墓":"蓄え・継承・収束の運気",
+  "絶":"リセットと再出発の転換運","胎":"新しい芽が宿る準備の運気","養":"力を養い守られて育つ運気"
+};
+
+// ---- 金運テキスト：命式中の財星（偏財・正財）の数と種類で分岐 ----
+function moneyText(mk){
+  const d = mk.pillars.day.stem;
+  let hen = 0, sei = 0;
+  const ps = mk.pillars;
+  // 天干（日干以外）と全支の蔵干を対象に財星を数える
+  for(const key of ['year','month','hour']){
+    if(!ps[key]) continue;
+    const t = tsuhenOf(d, ps[key].stem);
+    if(t === 4) hen++; if(t === 5) sei++;
+  }
+  for(const key of ['year','month','day','hour']){
+    const z = mk.zokan[key];
+    if(z === null || z === undefined) continue;
+    const t = tsuhenOf(d, z);
+    if(t === 4) hen++; if(t === 5) sei++;
+  }
+  const total = hen + sei;
+  let base;
+  if(total === 0){
+    base = "命式の表面に財星（偏財・正財）が見当たらないタイプです。これは金運がないという意味ではなく、お金そのものを目的に動くより、好きなことや専門性を磨いた結果として後から収入がついてくる型を示す傾向があります。損得勘定で動くと調子が狂いやすいので、報酬は実力の影と捉え、値付けや交渉は信頼できる人や仕組みに任せるのも一案でしょう。";
+  } else if(sei > 0 && hen === 0){
+    base = "財星のうち正財が立つ命式で、コツコツ働いて確実に蓄える堅実型の金運を持つ傾向があります。一攫千金や投機より、給与・積立・固定資産といった地に足のついたお金との相性がよく、計画的な家計管理がそのまま開運につながるでしょう。手堅さゆえに大きな勝負には慎重になりすぎる面もあるため、信頼できる情報に基づく長期投資など、守りの中の攻めを少し混ぜるとバランスが取れやすいタイプです。";
+  } else if(hen > 0 && sei === 0){
+    base = "財星のうち偏財が立つ命式で、お金を貯めるより回して増やす循環型の金運を持つ傾向があります。人付き合いや情報、チャンスへの投資が巡り巡って実入りになる型で、出し惜しみするとかえって流れが滞りやすいでしょう。収入の波は大きめになりやすいので、入る時に固定費を上げすぎないこと、複数の収入源を持つことが安定の鍵になりやすいタイプです。";
+  } else {
+    base = "正財と偏財の両方が命式にあり、堅実に蓄える力と回して増やす力を併せ持つ傾向があります。本業の安定収入を土台に、副業や投資で循環を作る二刀流が組みやすい型でしょう。ただし財星が多いことは「お金や現実的な用事に追われやすい」ことの暗示でもあるため、忙しさで体と学びの時間を削らない配分が長期的な金運を守る鍵になりやすいタイプです。";
+  }
+  if(total >= 3){
+    base += "なお財星の数が多めなので、お金の出入りも人からの頼まれごとも自然と増えやすい命式です。引き受ける範囲に線を引くことが、結果的に財を守ることにつながるでしょう。";
+  }
+  return base;
+}
+
+// ---- 恋愛・結婚テキスト：配偶者星の有無＋日支（配偶者宮）の通変星 ----
+function loveText(mk){
+  const d = mk.pillars.day.stem;
+  const female = (mk.input.gender === 'F');
+  // 配偶者星：女性は官星（偏官・正官）、男性は財星（偏財・正財）
+  const targets = female ? [6,7] : [4,5];
+  let count = 0;
+  const ps = mk.pillars;
+  for(const key of ['year','month','hour']){
+    if(!ps[key]) continue;
+    if(targets.includes(tsuhenOf(d, ps[key].stem))) count++;
+  }
+  for(const key of ['year','month','day','hour']){
+    const z = mk.zokan[key];
+    if(z === null || z === undefined) continue;
+    if(targets.includes(tsuhenOf(d, z))) count++;
+  }
+  const starName = female ? "官星（パートナーを示す星）" : "財星（パートナーを示す星）";
+  let t1;
+  if(count === 0){
+    t1 = "命式の表面に" + starName + "がはっきり現れないタイプです。これは縁がないという意味ではなく、恋愛や結婚を人生の中心に据えるより、自分の世界を持ったうえで対等に付き合う関係が合っていることを示す傾向があります。世間の標準的なペースや形にとらわれず、自分にとって自然な距離感の関係を選ぶことが満足度につながりやすいでしょう。";
+  } else if(count === 1){
+    t1 = starName + "が命式に一つ、程よく収まっている形です。相手に振り回されすぎず、かといって縁が薄いわけでもない、安定した一対一の関係を築きやすい傾向があります。出会いの数で勝負するより、信頼を深めた相手と長く続ける型でしょう。";
+  } else {
+    t1 = starName + "が命式に複数あり、異性との縁やモテ運そのものは豊かなタイプです。その分、選択肢の多さが迷いや関係の重なりを生みやすい暗示でもあるため、誰と深く付き合うかを自分の軸で決めることが、恋愛運を安定させる鍵になる傾向があります。";
+  }
+  // 日支＝配偶者宮の通変星から、家庭での関係性の質
+  const spouseT = tsuhenOf(d, mk.zokan.day);
+  const SPOUSE = {
+    0:"配偶者宮には比肩が座し、パートナーとは友人や同志のような対等な関係を望む傾向があります。互いの領域と自由を尊重し合える相手だと長続きしやすく、束縛や上下関係の強い相手とは摩擦が出やすいでしょう。",
+    1:"配偶者宮には劫財が座し、刺激的で社交的な関係を好む一方、主導権やお金を巡る駆け引きが家庭に持ち込まれやすい暗示があります。財布と決定権のルールを早めに決めておくと安定しやすい傾向です。",
+    2:"配偶者宮には食神が座し、衣食住を一緒に楽しめる穏やかで豊かな家庭運を持つ傾向があります。食卓や趣味の時間を大切にする相手との相性がよく、家庭が安らぎの場になりやすいでしょう。",
+    3:"配偶者宮には傷官が座し、感性の合う相手とは深く通じ合える反面、言葉の鋭さが夫婦間の火種になりやすい暗示があります。不満を溜めてから爆発させるより、こまめに言語化して伝える習慣が関係を守る鍵になる傾向です。",
+    4:"配偶者宮には偏財が座し、にぎやかで外向的な家庭を築きやすい傾向があります。パートナーや家族のために動くことが喜びになる型ですが、外の付き合いと家庭の時間の配分が課題になりやすいでしょう。",
+    5:"配偶者宮には正財が座し、堅実で誠実なパートナーシップに恵まれやすい傾向があります。家計や生活設計を共有できる現実的な関係が合っており、派手さより積み重ねで愛情を確かめ合う型でしょう。",
+    6:"配偶者宮には偏官が座し、頼りがいや行動力のある相手に惹かれやすい一方、関係に緊張感や波が生まれやすい暗示があります。互いに尊敬できる対象であり続けることが、刺激を絆に変える鍵になる傾向です。",
+    7:"配偶者宮には正官が座し、誠実で責任感のある相手との安定した結婚運を持つ傾向があります。世間的にもきちんとした形の家庭を築きやすく、信頼の積み重ねがそのまま夫婦の絆になる型でしょう。",
+    8:"配偶者宮には偏印が座し、独自の世界観を持つ個性的な相手と縁ができやすい傾向があります。一般的な夫婦像に当てはめるより、互いの孤独や趣味を尊重し合う知的な距離感が心地よい関係を生みやすいでしょう。",
+    9:"配偶者宮には印綬が座し、精神的な支えや学びを与えてくれる相手との縁が深い傾向があります。年齢や経験の差がある相手とも調和しやすく、家庭が休息と充電の場になりやすい型でしょう。"
+  };
+  return t1 + SPOUSE[spouseT];
+}
+
+// ---- 対人関係テキスト：比劫・食傷・印星のバランス ----
+function peopleText(mk){
+  const d = mk.pillars.day.stem;
+  const grp = [0,0,0,0,0]; // 比劫/食傷/財/官殺/印
+  const ps = mk.pillars;
+  for(const key of ['year','month','hour']){
+    if(!ps[key]) continue;
+    grp[Math.floor(tsuhenOf(d, ps[key].stem) / 2)]++;
+  }
+  for(const key of ['year','month','day','hour']){
+    const z = mk.zokan[key];
+    if(z === null || z === undefined) continue;
+    grp[Math.floor(tsuhenOf(d, z) / 2)]++;
+  }
+  let t = "";
+  if(grp[0] >= 3){
+    t += "命式に比肩・劫財（自我と仲間の星）が多く、人に合わせるより自分の流儀で付き合いたい独立型の対人傾向があります。気の合う相手とは深く長く付き合う一方、群れること自体には価値を感じにくく、広く浅い社交は消耗になりやすいでしょう。対等さを尊重してくれる相手を選ぶことが人間関係の満足度を決めやすいタイプです。";
+  } else if(grp[0] === 0){
+    t += "命式に比肩・劫財（自我の星）が少なく、自分を押し出すより相手や状況に合わせる協調型の対人傾向があります。摩擦は起きにくい反面、譲りすぎて自分の希望が後回しになりやすい暗示でもあるため、「嫌なことは嫌と言う」練習が対人運を底上げする鍵になりやすいでしょう。";
+  } else {
+    t += "自我の星と協調の星のバランスが取れており、出るべき場面と引くべき場面を使い分けられる対人傾向があります。";
+  }
+  if(grp[1] >= 2){
+    t += "また食神・傷官（表現の星）が目立つため、会話や創作を通じて人とつながるのが得意な型です。沈黙の付き合いより、何かを一緒に作ったり語り合ったりする関係で絆が深まりやすいでしょう。";
+  }
+  if(grp[4] >= 2){
+    t += "印星（受け取る星）も豊かなので、目上や年長者、知的な相手から引き立てられやすい運を持っています。教わる立場・支えられる立場を素直に受け取れるかどうかが、人脈の広がりを左右しやすい傾向です。";
+  }
+  if(grp[3] >= 2){
+    t += "官星（規範の星）が複数あることから、責任ある立場や役割を通じて人と関わる場面が多くなりやすい命式です。役割の外でも素を出せる相手を意識的に持つことが、息抜きの鍵になるでしょう。";
+  }
+  return t;
+}
+
+// ---- 健康テキスト：五行の過不足 ----
+// 各五行と身体の伝統的対応：木=肝・神経系／火=心・循環器／土=脾胃・消化器／金=肺・呼吸器・皮膚／水=腎・泌尿器・婦人科系
+function healthText(mk, cnt){
+  const ORGAN = ["肝臓や自律神経・筋","心臓や循環器・目","胃腸など消化器","肺や呼吸器・皮膚","腎臓・泌尿器や冷え"];
+  const parts = [];
+  const maxC = Math.max(...cnt), minC = Math.min(...cnt);
+  cnt.forEach((c, i) => {
+    if(c === 0){
+      parts.push("五行のうち「" + ELEM_NAMES[i] + "」が命式に見当たらず、伝統的にはこの気が司る" + ORGAN[i] + "の領域が弱点になりやすいとされます。日頃から該当する部位をいたわる生活習慣を意識すると守りになる傾向があります。");
+    } else if(c >= 4){
+      parts.push("「" + ELEM_NAMES[i] + "」の気が突出して強く、過剰もまた負担という考え方から、" + ORGAN[i] + "の領域に疲れが出やすいとされます。頑張りが利く分、不調のサインを見逃しやすい点に注意したい傾向です。");
+    }
+  });
+  let base;
+  if(parts.length === 0){
+    base = "五行に極端な偏りがなく、伝統的な見方では特定の臓腑に弱点が集中しにくい比較的バランスの取れた体質傾向です。ただし偏りが小さい人は不調も全身にうっすら出やすいため、睡眠・食事・運動の基礎を整えることがそのまま開運養生になるでしょう。";
+  } else {
+    base = parts.join("");
+  }
+  base += "なおこれは命理上の伝統的な対応関係に基づく目安であり、医学的な診断ではありません。気になる症状は医療機関での確認を優先してください。";
+  return base;
+}
+
+// ---- 流年テキスト：歳運の干が日干に対して何の通変星か ----
+const RYUNEN_TEXT = [
+/*比肩*/"自分自身と向き合い、自立や独立を後押しされる年回りの傾向があります。新しいことを自力で始めたり、対等な仲間と組んだりするのに向く一方、我が強く出て衝突が増えやすい暗示もあります。協力者と張り合うのではなく役割を分けることが、この年のエネルギーを建設的に使う鍵になるでしょう。",
+/*劫財*/"社交や共同事業が活発になる反面、お金の出入りが荒くなりやすい年回りの傾向があります。人付き合いの出費や頼まれごとが増えやすく、保証・貸し借り・うますぎる儲け話には特に慎重さが必要でしょう。勝負勘は冴える年なので、リスクを限定した挑戦に絞れば収穫の多い一年になりやすい傾向です。",
+/*食神*/"楽しみ・創作・衣食住が充実しやすい、息のつける年回りの傾向があります。好きなことに打ち込むほど結果的に実入りや人脈につながる流れで、健康面の回復や生活の立て直しにも向くでしょう。気が緩んで怠けすぎたり体重が増えやすい暗示もあるため、楽しみに少しの規律を添えるとちょうどよい一年です。",
+/*傷官*/"感性が研ぎ澄まされ、創作・企画・発信に冴えが出る年回りの傾向があります。その一方で批判精神も鋭くなるため、言葉が原因の摩擦や、目上との衝突、契約・規則まわりのトラブルには注意したい年です。違和感を壊す方向ではなく作品や提案の形にして出すことが、この年の鋭さを最も活かす道でしょう。",
+/*偏財*/"人とお金がよく動く、にぎやかで多忙な年回りの傾向があります。交際範囲が広がり、副収入や臨時収入のチャンスも巡りやすい一方、出費と予定も同じだけ膨らみやすいでしょう。フットワーク勝負の年なので、誘いには乗りつつも、体力と固定費の上限だけは決めておくと実りが残りやすい一年です。",
+/*正財*/"堅実な努力が形になり、生活の土台を固めるのに向く年回りの傾向があります。収入の安定、貯蓄、資産や住まいの整備、信頼の積み増しなど、地味でも確実な行動が報われやすいでしょう。派手さはない分、コツコツ型の計画を立てて淡々と実行することが、数年後に効いてくる一年です。",
+/*偏官*/"動きの多い、鍛えられる年回りの傾向があります。責任やプレッシャーのかかる役回り、急な変化や多忙が巡りやすい一方、それを乗り越えることで実力と評価が一段上がる年でもあります。受け身で振り回されると消耗するだけなので、自分から課題を取りにいく攻めの姿勢が、この年を味方につける鍵になるでしょう。",
+/*正官*/"社会的な信用・地位・責任に光が当たる年回りの傾向があります。昇進や抜擢、資格取得、公的な手続きや契約事がスムーズに進みやすく、きちんとした振る舞いがそのまま評価につながるでしょう。ルールを軽んじた行動は同じ強さで跳ね返ってきやすい年なので、正攻法で堂々と進むことが最良の戦略です。",
+/*偏印*/"知的好奇心が刺激され、学び直しや新分野の研究、発想の転換に向く年回りの傾向があります。本業以外の世界に触れることで視野が広がる一方、迷いや気移り、生活リズムの乱れが出やすい暗示もあります。インプット過多で動けなくなるより、学んだことを一つでも形にして試すことが、この年の収穫を確定させるでしょう。",
+/*印綬*/"学び・資格・知的な評価に恵まれ、目上からの引き立てを受けやすい年回りの傾向があります。腰を据えた勉強や執筆、専門性の深掘りに最適で、努力が認められる形で返ってきやすいでしょう。一方で頭でっかちになり行動が後回しになる暗示もあるため、学びと並行して小さく実践することがバランスの鍵になる一年です。"
+];
+</script>
+<script>
+"use strict";
+/* ============================================================
+   第4部：姓名判断データ（画数表・81数吉凶・五格計算）
+   ============================================================
+   画数の方針：
+   ・KANJI_OLD … 熊崎式（康熙字典）基準の画数。部首換算を適用済み：
+       氵=水4 / 忄=心4 / 扌=手4 / 犭=犬4 / 王=玉5 / ネ=示5 / 衤=衣6
+       にくづき月=肉6 / 艹=艸6 / 辶=辵7 / 阝(左)=阜8 / 阝(右)=邑7
+     新字体で書かれた字も、対応する旧字体の画数で収録（例：沢→澤17）。
+   ・NEW_DIFF … 新字体の実画数が旧字体基準と異なる字のみ収録。
+     モードBではこちらを使用。未収録字は両モード共通値。
+   ・複数の部首換算が重なる字（蓮・遥など）は文献間の差が特に大きい。
+     本表は上記ルールを機械的に一貫適用した値。検算時は手動修正UIで調整可。
+   ============================================================ */
+
+// 旧字体（康熙字典）基準の画数表
+const KANJI_OLD = {
+"一":1,"乙":1,"林":8,"藤":21,"橋":16,"阪":12,"阿":13,"莉":13,"金":8,"頼":16,"絵":19,"柴":10,
+"二":2,"七":2,"八":2,"九":2,"十":2,"人":2,"入":2,"力":2,"刀":2,"又":2,"了":2,
+"三":3,"千":3,"川":3,"上":3,"下":3,"大":3,"小":3,"口":3,"山":3,"子":3,"也":3,"之":3,"万":15,"与":14,"久":3,"丸":3,"工":3,"弓":3,"才":3,"女":3,"夕":3,"己":3,"土":3,"士":3,"干":3,
+"四":5,"五":4,"六":4,"円":13,"王":4,"天":4,"太":4,"中":4,"内":4,"文":4,"月":4,"木":4,"水":4,"火":4,"日":4,"元":4,"友":4,"公":4,"仁":4,"介":4,"心":4,"戸":4,"井":4,"今":4,"斗":4,"方":4,"比":4,"毛":4,"双":18,"引":4,"切":4,"仏":7,"予":13,"区":11,"収":6,"気":10,"父":4,"片":4,"牛":4,"犬":4,"不":4,"屯":4,"允":4,"勿":4,"匹":4,"午":4,"升":4,"卯":5,"及":4,
+"正":5,"生":5,"田":5,"由":5,"申":5,"白":5,"石":5,"立":5,"世":5,"市":5,"平":5,"永":5,"玄":5,"弘":5,"功":5,"加":5,"可":5,"古":5,"右":5,"左":5,"央":5,"史":5,"司":5,"未":5,"末":5,"本":5,"札":5,"玉":5,"包":5,"北":5,"半":5,"占":5,"巨":5,"矢":5,"穴":5,"主":5,"冬":5,"出":5,"用":5,"母":5,"皮":5,"目":5,"仙":5,"代":5,"令":5,"以":5,"兄":5,"句":5,"叶":5,"巧":5,"礼":18,"写":15,"広":15,"旧":18,"台":14,"庁":25,"弁":5,"払":9,"辺":22,"幼":5,"必":5,"丘":5,"丙":5,"且":5,"民":5,"示":5,"甲":5,"皿":5,"汀":6,
+"衣":6,"羽":6,"宇":6,"安":6,"守":6,"寺":6,"吉":6,"名":6,"向":6,"光":6,"先":6,"兆":6,"共":6,"好":6,"如":6,"妃":6,"字":6,"旬":6,"早":6,"旭":6,"曲":6,"有":6,"朱":6,"次":6,"百":6,"竹":6,"米":6,"糸":6,"至":6,"舟":6,"西":6,"多":6,"充":6,"伊":6,"仲":6,"任":6,"企":6,"全":6,"同":6,"各":6,"合":6,"圭":6,"地":6,"成":7,"毎":7,"凪":6,"帆":6,"年":6,"朴":6,"机":6,"羊":6,"老":6,"考":6,"耳":6,"肉":6,"自":6,"色":6,"芝":9,"虫":6,"血":6,"行":6,"壮":7,"両":8,"亜":8,"会":13,"当":13,"灯":16,"伝":13,"団":14,"弐":12,"庄":6,"在":6,"存":6,"宅":6,"宗":8,"匠":6,"印":6,"危":6,"夙":6,"江":7,"池":7,"汐":7,"州":6,"帝":9,
+"児":8,"佐":7,"何":7,"作":7,"伸":7,"伴":7,"位":7,"住":7,"助":7,"努":7,"君":7,"吟":7,"呂":7,"告":7,"壱":12,"妙":7,"孝":7,"宏":7,"寿":14,"尾":7,"岐":7,"希":7,"弟":7,"形":7,"志":7,"忍":7,"我":7,"杉":7,"材":7,"村":7,"束":7,"杜":7,"求":7,"男":7,"町":7,"秀":7,"究":7,"良":7,"見":7,"角":7,"言":7,"谷":7,"豆":7,"貝":7,"赤":7,"走":7,"足":7,"身":7,"車":7,"辰":7,"邑":7,"里":7,"佑":7,"伽":7,"冴":7,"利":7,"初":7,"判":7,"吾":7,"呉":7,"完":7,"杏":7,"芸":21,"労":12,"医":18,"売":15,"応":17,"沢":17,"快":8,"沖":8,"汰":8,"沙":8,
+"京":8,"享":8,"依":8,"並":8,"周":8,"和":8,"命":8,"固":8,"坂":7,"坪":8,"夜":8,"奈":8,"奉":8,"妹":8,"姉":8,"始":8,"季":8,"官":8,"宙":8,"定":8,"宜":8,"尚":8,"居":8,"岩":8,"岸":8,"幸":8,"庚":8,"弦":8,"往":8,"征":8,"忠":8,"念":8,"房":8,"所":8,"昇":8,"明":8,"易":8,"昔":8,"朋":8,"東":8,"松":8,"板":8,"枝":8,"果":8,"欣":8,"武":8,"知":8,"空":8,"直":8,"門":8,"阜":8,"雨":8,"青":8,"非":8,"卓":8,"協":8,"卒":8,"受":8,"呼":8,"妻":8,"委":8,"孟":8,"岳":8,"於":8,"旺":8,"昂":8,"牧":8,"物":8,"表":8,"長":8,"効":10,"学":16,"実":14,"宝":20,"尭":12,"弥":17,"来":8,"国":11,"歩":7,"拝":9,"拓":9,"招":9,"治":9,"沼":9,"波":9,"法":9,"河":9,"油":9,"祈":9,"社":8,"育":10,"茂":11,"英":11,"若":11,"苑":11,"芳":10,"芹":10,"芙":10,"花":10,"芯":10,"芽":11,"茅":11,"茉":11,"性":9,"怜":9,"拔":9,"昌":8,
+"亮":9,"信":9,"俊":9,"保":9,"勇":9,"南":9,"厚":9,"哉":9,"城":10,"奎":9,"姿":9,"威":9,"宣":9,"室":9,"屋":9,"峠":9,"帥":9,"幽":9,"度":9,"建":9,"彦":9,"待":9,"律":9,"後":9,"思":9,"政":9,"故":9,"春":9,"昭":9,"星":9,"映":9,"柊":9,"柏":9,"柚":9,"柳":9,"紀":9,"美":9,"計":9,"貞":9,"軍":9,"重":9,"面":9,"革":9,"音":9,"風":9,"飛":9,"食":9,"香":9,"泉":9,"皇":9,"砂":9,"秋":9,"科":9,"紅":9,"約":9,"衿":9,"首":9,"宥":9,"巷":9,"施":9,"柄":9,"査":9,"甚":9,"耐":9,"虹":9,"咲":9,"奏":9,"単":12,"栄":14,"海":11,"浄":12,"研":11,"県":16,"祐":10,"神":10,"祥":11,"祉":9,"持":10,"指":10,"洋":10,"洸":10,"津":10,"浅":12,"独":17,"狼":11,"玲":10,"珀":10,"郁":13,"郎":14,"発":12,"皆":9,"盆":9,"則":9,"勅":9,"卑":9,"叙":9,"変":23,"荘":13,"草":12,"茜":12,"胡":11,
+"倖":10,"倫":10,"候":10,"修":10,"兼":10,"准":10,"凌":10,"剛":10,"原":10,"員":10,"哲":10,"唄":10,"夏":10,"姫":10,"娘":10,"宮":10,"宰":10,"容":10,"島":10,"峻":10,"差":10,"師":10,"席":10,"庭":10,"徒":10,"扇":10,"料":10,"旅":10,"既":10,"晃":10,"晋":10,"書":10,"朔":10,"桂":10,"桃":10,"桐":10,"根":10,"格":10,"栞":10,"殊":10,"烈":10,"特":10,"留":10,"真":10,"秦":10,"笑":10,"紗":10,"純":10,"紘":10,"素":10,"翁":10,"耕":10,"航":10,"隼":10,"馬":10,"高":10,"鬼":10,"倭":10,"峯":10,"庫":10,"訓":10,"託":10,"記":10,"財":10,"貢":10,"起":10,"泰":10,"峰":10,"恩":10,"恭":10,"息":10,"悌":10,"敏":11,"梅":11,"朗":11,"浪":11,"浦":11,"浩":11,"流":11,"悦":11,"悟":11,"恵":12,"恋":23,"帰":18,"帯":11,"従":11,"徐":10,"桜":21,"桧":17,"案":10,"造":14,"速":14,"連":14,"透":14,"通":14,"逗":14,"郡":14,"院":15,"陣":15,"能":12,"被":11,"財":10,"貢":10,"隻":10,"翅":10,"般":10,"莞":13,
+"乾":11,"健":11,"偲":11,"務":11,"勘":11,"唯":11,"啓":11,"域":11,"基":11,"堀":11,"堂":11,"寅":11,"密":11,"尉":11,"崇":11,"崚":11,"崎":11,"常":11,"康":11,"彗":11,"彩":11,"彬":11,"得":11,"悠":11,"教":11,"救":11,"旋":11,"晨":11,"望":11,"梁":11,"梓":11,"梢":11,"梧":11,"梨":11,"産":11,"異":11,"祭":11,"章":11,"笙":11,"笛":11,"終":11,"紳":11,"細":11,"紹":11,"翌":11,"習":11,"船":11,"規":11,"許":11,"鳥":11,"麻":11,"彪":11,"梶":11,"毬":11,"爽":11,"笠":11,"紬":11,"雪":11,"頂":11,"鹿":11,"唱":11,"惇":12,"惟":12,"捷":12,"採":12,"接":12,"掛":12,"探":12,"振":11,"挙":17,"據":17,"清":12,"淑":12,"淳":12,"涼":12,"淀":12,"渚":13,"渓":14,"液":12,"猛":12,"球":12,"理":12,"琉":12,"現":12,"盛":12,"視":12,"経":13,"絆":11,"菅":14,"菊":14,"菜":14,"萌":14,"菖":14,"菫":14,"著":15,"黒":12,"斎":17,"斉":14,"渋":16,"隆":16,"陸":16,"険":21,"陶":16,"陵":16,"進":15,"逸":15,"週":15,"郷":17,"都":16,"部":15,"竜":16,"亀":16,"訳":20,"設":11,"訪":11,"販":11,"赦":11,"軟":11,"釈":20,"野":11,"閉":11,"雀":11,"鳴":14,"麦":11,
+"偉":12,"傘":12,"備":12,"創":12,"勝":12,"博":12,"喜":12,"喬":12,"善":12,"堅":12,"堺":12,"場":12,"媛":12,"富":12,"寒":12,"尊":12,"就":12,"嵐":12,"御":12,"復":12,"惑":12,"惣":12,"敢":12,"敬":13,"斐":12,"智":12,"晶":12,"景":12,"普":12,"朝":12,"期":12,"棟":12,"森":12,"椋":12,"植":12,"椎":12,"欽":12,"無":12,"然":12,"番":12,"登":12,"着":12,"短":12,"程":12,"童":12,"筆":12,"等":12,"筋":12,"策":12,"紫":12,"結":12,"給":12,"統":12,"絢":12,"翔":12,"詞":12,"詠":12,"象":12,"貴":12,"越":12,"超":12,"量":12,"開":12,"間":12,"雄":12,"集":12,"雲":12,"須":12,"幾":12,"晴":12,"極":12,"嵩":13,"椿":13,"奥":13,"滋":13,"港":13,"湖":13,"湊":13,"湯":13,"渡":13,"温":14,"満":15,"湾":26,"琴":13,"瑛":13,"裕":13,"詔":12,"診":12,"証":12,"街":12,"裁":12,"塚":13,"塁":12,"婿":12,"媒":12,"廃":15,"弾":15,"循":12,"提":13,"揚":13,"換":13,"揮":13,"敦":12,"暁":16,"曽":12,"最":12,"歯":15,"湿":17,"焼":16,"煮":13,"営":17,"葉":15,"葵":15,"萩":15,"落":15,"蒼":16,"蒔":16,"葛":15,"董":15,"蛍":16,"装":13,"覚":20,"詐":12,"賀":12,"遂":16,"遅":16,"遇":16,"遊":16,"運":16,"道":16,"達":16,"遥":17,"鈍":12,"陽":17,"隈":17,"階":17,"随":21,"雇":12,"雰":12,"順":12,"飯":13,"飲":13,
+"働":13,"勢":13,"嗣":13,"園":13,"夢":13,"幹":13,"廉":13,"微":13,"想":13,"愛":13,"意":13,"慈":13,"新":13,"暖":13,"暉":13,"椰":13,"楓":13,"楠":13,"業":13,"殿":13,"照":13,"煌":13,"稔":13,"稜":13,"絹":13,"聖":13,"詩":13,"誠":13,"資":13,"路":13,"載":13,"農":13,"鈴":13,"雅":13,"雷":13,"電":13,"靖":13,"頌":13,"暢":14,"塩":24,"寛":15,"楽":15,"源":14,"溜":14,"漠":17,"滑":17,"漂":18,"滉":14,"瑚":14,"瑞":14,"禎":14,"禅":17,"蓮":20,"蒲":16,"蓬":17,"裟":13,"詢":13,"豊":18,"賊":13,"跡":13,"践":18,"輝":15,"辞":19,"預":13,"頑":13,"飾":14,"鳩":13,"続":21,"塙":13,"幌":13,"廊":13,"慨":14,"摂":21,"数":15,"楼":15,"溝":14,"漢":15,"獅":14,"瑶":14,"碓":13,"碗":13,"稚":13,"窟":13,"絞":12,"継":20,"群":13,"義":13,"虞":13,"褐":14,"誇":13,"該":13,"詳":13,"誉":21,"賃":13,"遁":16,"遍":16,"鉄":21,"鉱":23,"隔":18,"零":13,"霧":19,"靴":13,"頓":13,"飼":13,"魁":14,"鼓":13,
+"像":14,"嘉":14,"境":14,"寧":14,"彰":14,"旗":14,"構":14,"歌":14,"熊":14,"爾":14,"碧":14,"種":14,"端":14,"算":14,"管":14,"精":14,"維":14,"綱":14,"綾":14,"緋":14,"翠":14,"聞":14,"肇":14,"製":14,"誌":14,"認":14,"誓":14,"語":14,"豪":14,"輔":14,"銀":14,"閣":14,"颯":14,"鳳":14,"嶋":14,"榛":14,"綺":14,"増":15,"徳":15,"様":15,"瑠":15,"稲":15,"静":16,"総":17,"聡":17,"漣":15,"漫":15,"漕":15,"演":15,"漸":15,"獄":15,"瘦":15,"碩":14,"禍":14,"稼":15,"窪":14,"竪":14,"箋":14,"緑":14,"罰":14,"腐":14,"膏":16,"舞":15,"蔭":17,"蔵":20,"誕":15,"誘":14,"踊":14,"銘":14,"閥":14,"雑":18,"魂":14,"鳴":14,"鼻":14,"齊":14,
+"儀":15,"凛":15,"勲":16,"器":16,"嬉":15,"幡":15,"影":15,"徹":15,"慶":15,"憂":15,"槻":15,"標":15,"権":22,"潔":16,"熱":15,"盤":15,"確":15,"範":15,"編":15,"舞":15,"蝶":15,"衛":16,"諒":15,"論":15,"賛":15,"賜":15,"趣":15,"輝":15,"鋭":15,"駒":15,"魅":15,"黎":15,"凜":15,"摩":15,"慧":15,"舗":15,"潤":16,"澄":16,"潮":16,"澪":17,"潟":16,"敷":15,"穂":17,"窯":15,"線":15,"縄":19,"縁":15,"罵":15,"膝":17,"舖":15,"蕉":18,"蕗":19,"諏":15,"調":15,"談":15,"請":15,"諸":16,"豎":15,"賦":15,"賓":14,"輩":15,"遵":19,"選":19,"遷":19,"鄭":19,"鋒":15,"霊":24,"養":15,"駈":15,"魯":15,"麹":19,"黙":16,
+"樹":16,"橘":16,"機":16,"燕":16,"篤":16,"縞":16,"興":16,"衡":16,"親":16,"諭":16,"鋼":16,"錦":16,"頭":16,"館":17,"龍":16,"賢":16,"操":17,"擁":17,"濃":17,"濁":17,"澤":17,"獲":18,"環":18,"磨":16,"積":16,"穏":19,"築":16,"緯":16,"縦":17,"繊":23,"翰":16,"膨":18,"薄":19,"薦":19,"薙":19,"薫":20,"融":16,"衛":16,"覧":21,"諦":16,"謀":16,"謡":17,"賭":16,"輸":16,"還":20,"醍":16,"錘":16,"錐":16,"錫":16,"隣":21,"雕":16,"霖":16,"霞":17,"鞘":16,
+"優":17,"嚇":17,"懐":20,"燦":17,"瞳":17,"績":17,"翼":17,"鍵":17,"鍛":17,"鴻":17,"曙":17,"瞭":17,"篠":17,"謙":17,"講":17,"謝":17,"鞠":17,"嶽":17,"駿":17,"嶺":17,"濡":18,"濤":18,"瀕":20,"爵":17,"犠":17,"環":18,"癒":18,"礁":17,"禧":17,"穣":22,"聴":22,"膳":18,"覗":17,"覚":20,"謹":18,"鍋":17,"霜":17,"韓":18,"風":9,"鮮":17,"齢":20,
+"瞬":18,"織":18,"繭":18,"鎌":18,"雛":18,"題":18,"額":18,"顔":18,"騎":18,"藁":20,"藍":21,"藏":20,"観":25,"贈":19,"鎖":18,"闘":20,"難":19,"願":19,"類":19,"麗":19,"瀬":20,"爆":19,"瓊":20,"璽":19,"羅":20,"臓":24,"識":19,"譜":19,"鏡":19,"霧":19,"韻":19,"鯛":19,"鵬":19,"麓":19,
+"馨":20,"鐘":20,"耀":20,"議":20,"競":20,"護":21,"鶴":21,"露":21,"籍":20,"響":22,"懸":20,"欄":21,"櫻":21,"灘":23,"譲":24,"驚":23,"麟":24,"鷹":24,"鷲":23,"巌":23,"巖":23,"鑑":22,"驍":22
+};
+
+// 新字体の実画数（旧字体基準と異なる字のみ）。モードBで使用。
+const NEW_DIFF = {
+"藤":18,"阪":7,"阿":8,"莉":10,"絵":12,
+"四":5,"五":4,"万":3,"与":3,"円":4,"双":4,"仏":4,"予":4,"区":4,"収":4,"気":6,
+"礼":5,"写":5,"広":5,"旧":5,"台":5,"庁":5,"払":5,"辺":5,"壮":6,"両":6,"亜":7,"会":6,"当":6,"灯":6,"伝":6,"団":6,"弐":6,"成":6,"毎":6,"芝":6,"江":6,"池":6,"汐":6,
+"児":7,"寿":7,"芸":7,"労":7,"医":7,"売":7,"応":7,"沢":7,"快":7,"沖":7,"汰":7,"沙":7,"壱":7,"歩":8,"来":7,"国":8,"効":8,"学":8,"実":8,"宝":8,"尭":8,"弥":8,"社":7,"育":8,"茂":8,"英":8,"若":8,"苑":8,"芳":7,"芹":7,"芙":7,"花":7,"芯":7,"芽":8,"茅":8,"茉":8,"性":8,"怜":8,"拔":7,"拝":8,"拓":8,"招":8,"治":8,"沼":8,"波":8,"法":8,"河":8,"油":8,"祈":8,
+"城":9,"単":9,"栄":9,"海":9,"浄":9,"研":9,"県":9,"祐":9,"神":9,"祥":10,"祉":8,"持":9,"指":9,"洋":9,"洸":9,"津":9,"浅":9,"独":9,"狼":10,"玲":9,"珀":9,"郁":9,"郎":9,"発":9,"変":9,"荘":9,"草":9,"茜":9,"胡":9,
+"敏":10,"梅":10,"朗":10,"浪":10,"浦":10,"浩":10,"流":10,"悦":10,"悟":10,"恵":10,"恋":10,"帰":10,"帯":10,"従":10,"桜":10,"桧":10,"造":10,"速":10,"連":10,"透":10,"通":10,"逗":10,"郡":10,"院":10,"陣":10,"能":10,"被":10,"莞":10,"案":10,
+"振":10,"惇":11,"惟":11,"捷":11,"採":11,"接":11,"掛":11,"探":11,"挙":10,"清":11,"淑":11,"淳":11,"涼":11,"淀":11,"渚":11,"渓":11,"液":11,"猛":11,"球":11,"理":11,"琉":11,"現":11,"盛":11,"視":11,"経":11,"菅":11,"菊":11,"菜":11,"萌":11,"菖":11,"菫":11,"著":11,"黒":11,"斎":11,"斉":8,"渋":11,"隆":11,"陸":11,"険":11,"陶":11,"陵":11,"進":11,"逸":11,"週":11,"郷":11,"都":11,"部":11,"竜":10,"亀":11,"訳":11,"釈":11,"麦":7,"鳴":14,
+"敬":12,"渡":12,"港":12,"湖":12,"湊":12,"湯":12,"温":12,"満":12,"湾":12,"琴":12,"瑛":12,"裕":12,"塚":12,"弾":12,"提":12,"揚":12,"換":12,"揮":12,"暁":12,"営":12,"葉":12,"葵":12,"萩":12,"落":12,"蒼":13,"蒔":13,"葛":12,"董":12,"蛍":11,"装":12,"覚":12,"遂":12,"遅":12,"遇":12,"遊":12,"運":12,"道":12,"達":12,"遥":12,"陽":12,"隈":12,"階":12,"随":12,"歯":12,"湿":12,"焼":12,"煮":12,"奥":12,"嵩":13,"椿":13,"滋":12,"飯":12,"飲":12,
+"暢":14,"塩":13,"寛":13,"楽":13,"源":13,"溜":13,"漠":13,"滑":13,"滉":13,"瑚":13,"瑞":13,"禎":13,"禅":13,"蓮":13,"蒲":13,"蓬":14,"豊":13,"践":13,"輝":15,"辞":13,"続":13,"摂":13,"数":13,"楼":13,"溝":13,"漢":13,"獅":13,"瑶":13,"継":13,"誉":13,"遁":13,"遍":12,"鉄":13,"鉱":13,"隔":13,"霧":19,"魁":14,"慨":13,"飾":13,
+"増":14,"徳":14,"様":14,"瑠":14,"稲":14,"静":14,"総":14,"聡":14,"漣":14,"漫":14,"漕":14,"演":14,"漸":14,"獄":14,"碩":14,"禍":13,"稼":15,"窪":14,"緑":14,"雑":14,"蔭":14,"蔵":15,"誕":15,"膏":14,"漂":14,"齊":14,
+"勲":15,"器":15,"権":15,"潔":15,"衛":16,"潤":15,"澄":15,"潮":15,"澪":16,"潟":15,"穂":15,"縄":15,"膝":15,"蕉":15,"蕗":15,"諸":15,"遵":15,"選":15,"遷":15,"鄭":14,"霊":15,"黙":15,"賓":15,"麹":15,
+"館":16,"操":16,"擁":16,"濃":16,"濁":16,"澤":16,"獲":16,"環":17,"穏":16,"縦":16,"繊":17,"膨":16,"薄":16,"薦":16,"薙":16,"薫":16,"覧":17,"謡":16,"還":16,"隣":16,"霞":17,"懐":16,
+"聴":17,"穣":18,"膳":16,"謹":17,"癒":18,"濡":17,"濤":17,"瀕":19,"鮮":17,"齢":17,
+"藁":17,"藍":18,"藏":17,"観":18,"贈":18,"闘":18,"難":18,"願":19,"瀬":19,"爆":19,"臓":19,"識":19,"譜":19,"鏡":19,"韻":19,
+"護":20,"響":20,"懸":20,"欄":20,"灘":22,"譲":20,"驚":22,"巌":20,"鑑":23
+};
+
+// ひらがな・カタカナの画数（実画数。両モード共通）
+const KANA_STROKES = {
+"あ":3,"い":2,"う":2,"え":2,"お":3,"か":3,"き":4,"く":1,"け":3,"こ":2,
+"さ":3,"し":1,"す":2,"せ":3,"そ":1,"た":4,"ち":2,"つ":1,"て":1,"と":2,
+"な":4,"に":3,"ぬ":2,"ね":2,"の":1,"は":3,"ひ":1,"ふ":4,"へ":1,"ほ":4,
+"ま":3,"み":2,"む":3,"め":2,"も":3,"や":3,"ゆ":2,"よ":2,
+"ら":2,"り":2,"る":1,"れ":2,"ろ":1,"わ":2,"を":3,"ん":1,
+"が":5,"ぎ":6,"ぐ":3,"げ":5,"ご":4,"ざ":5,"じ":3,"ず":4,"ぜ":5,"ぞ":3,
+"だ":6,"ぢ":4,"づ":3,"で":3,"ど":4,"ば":5,"び":3,"ぶ":6,"べ":3,"ぼ":6,
+"ぱ":4,"ぴ":2,"ぷ":5,"ぺ":2,"ぽ":5,
+"ゃ":3,"ゅ":2,"ょ":2,"っ":1,"ー":1,
+"ア":2,"イ":2,"ウ":3,"エ":3,"オ":3,"カ":2,"キ":3,"ク":2,"ケ":3,"コ":2,
+"サ":3,"シ":3,"ス":2,"セ":2,"ソ":2,"タ":3,"チ":3,"ツ":3,"テ":3,"ト":2,
+"ナ":2,"ニ":2,"ヌ":2,"ネ":4,"ノ":1,"ハ":2,"ヒ":2,"フ":1,"ヘ":1,"ホ":4,
+"マ":2,"ミ":3,"ム":2,"メ":2,"モ":3,"ヤ":2,"ユ":2,"ヨ":3,
+"ラ":2,"リ":2,"ル":2,"レ":1,"ロ":3,"ワ":2,"ヲ":3,"ン":2,
+"ガ":4,"ギ":5,"グ":4,"ゲ":5,"ゴ":4,"ザ":5,"ジ":5,"ズ":4,"ゼ":4,"ゾ":4,
+"ダ":5,"ヂ":5,"ヅ":5,"デ":5,"ド":4,"バ":4,"ビ":4,"ブ":3,"ベ":3,"ボ":6,
+"パ":3,"ピ":3,"プ":2,"ペ":2,"ポ":5,
+"ャ":2,"ュ":2,"ョ":3,"ッ":3
+};
+
+// 数字漢字（モードAで字義数として上書き。一〜十のみ。百・千などは実画数のまま）
+const NUM_KANJI_GIGI = {"一":1,"二":2,"三":3,"四":4,"五":5,"六":6,"七":7,"八":8,"九":9,"十":10};
+</script>
+<script>
+"use strict";
+/* ============================================================
+   第5部：八十一数の吉凶表と数意・五格の計算・三才配置
+   ============================================================ */
+
+// 81数の吉凶（熊崎式系の標準的な区分）と数意キーワード
+// rate: 5=大吉 4=吉 3=半吉 2=凶 1=大凶
+const SUI_TABLE = {
+1:[5,"太陽・万物の始まり"],2:[2,"分離・混沌"],3:[5,"希望・名声と発展"],4:[1,"破滅・自滅の苦労"],5:[5,"福徳円満・心身健全"],
+6:[5,"天徳・家門の繁栄"],7:[4,"独立・剛毅果断"],8:[4,"堅実・忍耐で意志貫徹"],9:[2,"薄幸・波乱と窮乏"],10:[1,"空虚・万事窮まる"],
+11:[5,"天恵・着実な発展"],12:[2,"薄弱・意志力不足"],13:[5,"智略・人気と才覚"],14:[2,"破兆・不和と離別"],15:[5,"福寿円満・人望"],
+16:[5,"衆望・頭領の徳"],17:[4,"剛健・万難を突破"],18:[4,"鉄石・強い意志"],19:[2,"障害・才あれど挫折"],20:[1,"空虚・病弱と苦難"],
+21:[5,"独立権威・頭領運"],22:[2,"薄弱・中途挫折"],23:[5,"旭日昇天・隆昌"],24:[5,"無から有を生む蓄財"],25:[4,"安泰・個性で成功"],
+26:[2,"波乱・英雄か荊棘か"],27:[2,"批難・中折れ"],28:[2,"遭難・離別と障害"],29:[4,"智謀・財力と成功"],30:[3,"浮沈・一発勝負の投機"],
+31:[5,"智仁勇・統率と繁栄"],32:[5,"僥倖・引き立てで開運"],33:[5,"昇天・強烈な権威"],34:[1,"破家・災厄重なる"],35:[4,"温和・技芸で大成"],
+36:[2,"波乱・侠気が仇"],37:[5,"権威・忠実で独立"],38:[3,"技芸・文才で立つ"],39:[4,"福寿・権威と富"],40:[3,"浮沈・知略あれど徳薄し"],
+41:[5,"実力・名声と人望"],42:[2,"多芸不精・寂寞"],43:[2,"散財・外見倒れ"],44:[1,"破滅・悲運の暗示"],45:[5,"順風・大志を遂げる"],
+46:[2,"載宝沈船・不遇"],47:[5,"開花結実・盛運"],48:[5,"智嚢・参謀の徳望"],49:[3,"吉凶極端・隠忍が吉"],50:[2,"一成一敗・盛衰"],
+51:[3,"盛衰交互・浮沈"],52:[5,"先見・無形から実り"],53:[2,"外実不一致・内憂"],54:[1,"多難・障害と辛苦"],55:[3,"外美内苦・善行で補う"],
+56:[2,"晩節困難・気力不足"],57:[4,"寒鶯吟梅・苦難の後の吉"],58:[3,"浮沈の後の大成"],59:[2,"失意・無気力"],60:[1,"動揺・暗黒不安"],
+61:[4,"名利両全・驕慢に注意"],62:[2,"衰滅・信用失墜"],63:[5,"舜日麗花・富栄"],64:[1,"浮沈滅裂・非運"],65:[5,"富貴長寿・天下泰平"],
+66:[2,"内外不和・進退両難"],67:[5,"通天・自立で万事通達"],68:[5,"発明・勤勉と堅実"],69:[2,"非業・不安と停滞"],70:[1,"暗夜・空虚険悪"],
+71:[3,"内剛外柔・後に吉"],72:[2,"陰雲・外見吉も内実凶"],73:[3,"志高く力及ばず・平穏"],74:[2,"無能・逆境"],75:[3,"平和・退いて守れば吉"],
+76:[2,"傾覆・破産の暗示"],77:[3,"楽中苦あり・半吉"],78:[3,"晩年に衰え・前半は吉"],79:[2,"窮極・不遇"],80:[2,"波乱・隠退すれば安泰"],
+81:[5,"還元・最極の盛大"]
+};
+const RATE_NAME = {5:"大吉",4:"吉",3:"半吉",2:"凶",1:"大凶"};
+const RATE_CLS  = {5:"r-daikichi",4:"r-kichi",3:"r-hankichi",2:"r-kyo",1:"r-daikyo"};
+
+// 吉凶区分ごとの解説文（数意キーワードと組み合わせて使用）
+const RATE_TEXT = {
+5:"運勢学では最上位の吉数とされ、この格の領域に追い風が吹きやすい配置です。持って生まれた力が素直に発揮されやすく、努力が形になりやすい数とされます。",
+4:"安定した吉数とされ、堅実な努力が報われやすい配置です。派手さより着実さで運を積み上げる数とされ、誠実に進むほど土台が固まる傾向があります。",
+3:"吉と凶の両面を併せ持つ数とされ、活かし方次第で評価が分かれる配置です。長所が出る環境を選ぶこと、無理な勝負を避けることで吉の面が前に出やすい傾向があります。",
+2:"運勢学では波乱や苦労の暗示を持つ数とされますが、これは欠陥ではなく「課題のテーマ」を示すものと捉えるのが実際的です。数意の示す落とし穴をあらかじめ知って備えることで、影響は大きく和らぐと考えられています。",
+1:"伝統的には強い凶意を持つとされる数ですが、現実には同じ画数でも生き方で大きく差が出ます。数意の示すテーマ（過信・散財・健康の無理など）に自覚的であること自体が、この数を持つ人の強みに変わるとされます。"
+};
+
+// 五格それぞれの意味
+const KAKU_ROLE = {
+"天格":"姓に由来する格で、先祖から受け継ぐ運や家系の傾向を表すとされます。単独での吉凶判断はあまり重視せず、人格との関係（後述の三才）で見るのが基本です。",
+"人格":"姓と名の接点に立つ中心の格で、性格の核と中年期（おおむね30〜50代）の運勢を表すとされます。五格の中で最も重視され、その人の人生の幹にあたる部分です。",
+"地格":"名に由来する格で、幼少期から青年期（おおむね30歳頃まで）の運勢と、本人の基礎的な気質・才能の方向を表すとされます。",
+"外格":"総格から人格を除いた部分で、対人関係・社会との関わり方・周囲からの評価や援助運を表すとされます。",
+"総格":"姓名すべての画数の合計で、人生全体、特に晩年期（おおむね50代以降）の運勢の総決算を表すとされます。生涯を貫く運の基調と読むのが一般的です。"
+};
+
+/* ---- 文字の画数を取得 ----
+   mode 'A'：旧字体基準＋数字漢字は字義数
+   mode 'B'：新字体実画数（NEW_DIFF優先）＋数字も実画数
+   返り値 null＝収録外（手入力が必要） */
+function strokeOf(ch, mode){
+  if(KANA_STROKES[ch] !== undefined) return KANA_STROKES[ch];
+  if(mode === 'A'){
+    if(NUM_KANJI_GIGI[ch] !== undefined) return NUM_KANJI_GIGI[ch];
+    if(KANJI_OLD[ch] !== undefined) return KANJI_OLD[ch];
+    return null;
+  } else {
+    if(NEW_DIFF[ch] !== undefined) return NEW_DIFF[ch];
+    if(KANJI_OLD[ch] !== undefined) return KANJI_OLD[ch];
+    return null;
+  }
+}
+
+/* ---- 五格の計算 ----
+   seiArr/meiArr：各文字の画数配列（手動修正後の値）
+   mode 'A'：一字姓・一字名に霊数1を加えて天格・地格を計算（総格には加えない）
+   mode 'B'：霊数なし
+   外格 ＝ 天格 ＋ 地格 − 人格（霊数込みの定義で全字数に一般化できる） */
+function calcGokaku(seiArr, meiArr, mode){
+  const sum = a => a.reduce((x,y)=>x+y, 0);
+  const reisuu = (mode === 'A');
+  const ten = sum(seiArr) + (reisuu && seiArr.length === 1 ? 1 : 0);
+  const chi = sum(meiArr) + (reisuu && meiArr.length === 1 ? 1 : 0);
+  const jin = seiArr[seiArr.length - 1] + meiArr[0];
+  const sou = sum(seiArr) + sum(meiArr);
+  let gai = ten + chi - jin;
+  if(gai < 1) gai = 1;   // 理論上の保険
+  return {ten, jin, chi, gai, sou};
+}
+
+// 数を1〜81に正規化（81を超える総格は81を引くのが熊崎式の慣例）
+function normSuu(n){
+  while(n > 81) n -= 81;
+  if(n < 1) n = 1;
+  return n;
+}
+
+/* ---- 三才配置 ----
+   天格・人格・地格の下一桁から五行を割り当て：1,2木 3,4火 5,6土 7,8金 9,0水 */
+function kakuElem(n){
+  const d = n % 10;
+  if(d === 1 || d === 2) return 0;
+  if(d === 3 || d === 4) return 1;
+  if(d === 5 || d === 6) return 2;
+  if(d === 7 || d === 8) return 3;
+  return 4;
+}
+function sansaiText(ten, jin, chi){
+  const e = [kakuElem(ten), kakuElem(jin), kakuElem(chi)];
+  const name = e.map(i => ELEM_NAMES[i]).join("・");
+  // 相生：aがbを生む
+  const gen = (a,b) => (a + 1) % 5 === b;
+  // 相剋：aがbを剋す
+  const koku = (a,b) => (a + 2) % 5 === b;
+  const rel = (a,b) => gen(a,b)||gen(b,a) ? 1 : (a===b ? 0 : (koku(a,b)||koku(b,a) ? -1 : 0));
+  const r1 = rel(e[0], e[1]);  // 天-人
+  const r2 = rel(e[1], e[2]);  // 人-地
+  let t;
+  if(r1 >= 0 && r2 >= 0){
+    t = "三才は「" + name + "」で、天・人・地の五行が相生または比和でつながる良好な配置とされます。基礎運が安定し、上からの引き立てと下からの支えの両方を受けやすい形で、五格の吉数が素直に働きやすい傾向があります。";
+  } else if(r1 < 0 && r2 < 0){
+    t = "三才は「" + name + "」で、天・人・地の間に相剋が重なる配置とされます。伝統的には環境との摩擦や心身の消耗が出やすい形とされますが、これは「外との折り合いの付け方」が人生のテーマになることを示すと読めます。五格の数意と合わせ、無理をためない生活設計を意識すると影響は和らぐと考えられています。";
+  } else {
+    t = "三才は「" + name + "」で、相生と相剋が混在する配置とされます。順風の領域と摩擦の出やすい領域がはっきり分かれる形で、合う環境を選べば伸び、合わない環境では消耗しやすいという、環境選びの重要性を示す配置と読むのが実際的でしょう。";
+  }
+  t += "なお三才配置は熊崎式の補助的な判断項目で、五格の吉凶より優先されるものではありません。";
+  return t;
+}
+</script>
+<script>
+"use strict";
+/* ============================================================
+   第6部：画面描画とイベント処理
+   ============================================================ */
+
+const $ = id => document.getElementById(id);
+let lastMK = null;  // 直近の命式（再描画用）
+
+// ---- 真太陽時補正の選択で経度入力欄を表示 ----
+$("solarTimeMode").addEventListener("change", function(){
+  $("lonBox").style.display = this.value === "true" ? "block" : "none";
+});
+// ---- 時刻不明チェックで時刻入力を無効化 ----
+$("timeUnknown").addEventListener("change", function(){
+  $("btime").disabled = this.checked;
+});
+
+// ---- 鑑定実行 ----
+$("runBtn").addEventListener("click", function(){
+  const err = $("errMsg"); err.textContent = "";
+  const sei = $("sei").value.replace(/[\s　]/g, "");
+  const mei = $("mei").value.replace(/[\s　]/g, "");
+  const bdate = $("bdate").value;
+  const timeUnknown = $("timeUnknown").checked;
+  const btime = $("btime").value;
+  if(!sei || !mei){ err.textContent = "姓と名を入力してください。"; return; }
+  if(!bdate){ err.textContent = "生年月日を入力してください。"; return; }
+  if(!timeUnknown && !btime){ err.textContent = "出生時刻を入力するか「時刻不明」にチェックしてください。"; return; }
+
+  const [y, m, d] = bdate.split("-").map(Number);
+  let hh = 12, mm = 0;
+  if(!timeUnknown){ [hh, mm] = btime.split(":").map(Number); }
+
+  const params = {
+    y, m, d, hh, mm,
+    timeKnown: !timeUnknown,
+    gender: $("gender").value,
+    dayBoundary: Number($("dayBoundary").value),
+    solarCorr: $("solarTimeMode").value === "true",
+    lon: Number($("lon").value) || 135,
+    zokanMode: $("zokanMode").value
+  };
+
+  const mk = calcMeishiki(params);
+  lastMK = mk;
+  renderMeishiki(mk);
+  renderTopics(mk);
+  renderTaiun(mk);
+  renderRyunen(mk);
+  buildSeimeiChips(sei, mei);
+  recalcSeimei();
+
+  $("results").style.display = "block";
+  $("results").scrollIntoView({behavior: "smooth"});
+});
+
+/* ============================================================
+   四柱推命の描画
+   ============================================================ */
+function renderMeishiki(mk){
+  const d = mk.pillars.day.stem;
+  const box = $("pillarsBox");
+  box.innerHTML = "";
+  const defs = [
+    ["時柱", mk.pillars.hour, mk.zokan.hour],
+    ["日柱", mk.pillars.day,  mk.zokan.day],
+    ["月柱", mk.pillars.month,mk.zokan.month],
+    ["年柱", mk.pillars.year, mk.zokan.year]
+  ];
+  // 伝統的な並び（右から年→時）を再現するため、左から時・日・月・年で表示
+  for(const [name, pl, zk] of defs){
+    const div = document.createElement("div");
+    div.className = "pillar";
+    if(!pl){
+      div.innerHTML = '<div class="pname">' + name + '</div><div class="kanshi">―</div><div class="sub">時刻不明</div>';
+      box.appendChild(div); continue;
+    }
+    const isDay = (name === "日柱");
+    const stemT = isDay ? "日主（本人）" : TSUHEN[tsuhenOf(d, pl.stem)];
+    const zkT = TSUHEN[tsuhenOf(d, zk)];
+    const un = JUNIUN[juniunOf(d, pl.branch)];
+    div.innerHTML =
+      '<div class="pname">' + name + '</div>' +
+      '<div class="kanshi">' + STEMS[pl.stem] + BRANCHES[pl.branch] + '</div>' +
+      '<div class="sub"><b>' + stemT + '</b><br>蔵干 ' + STEMS[zk] + '（' + zkT + '）<br>' + un + '</div>';
+    box.appendChild(div);
+  }
+
+  // 注記
+  const notes = [];
+  notes.push("月柱：" + mk.setsu.setsuName + "の節入りから第" + mk.elapsedDays + "日（蔵干の分野判定に使用）。");
+  if(mk.pillarYear !== mk.input.y){
+    notes.push("立春前の生まれのため、年柱は前年（" + mk.pillarYear + "年）の干支を採用しています。");
+  }
+  if(mk.lateNight){
+    notes.push("23時以降の出生のため、日界23時の設定に従い翌日の日柱を採用しています（流派により異なる箇所です）。");
+  }
+  if(mk.corrInfo){
+    const total = mk.corrInfo.lonCorr + mk.corrInfo.eot;
+    notes.push("真太陽時補正：経度補正" + mk.corrInfo.lonCorr.toFixed(1) + "分＋均時差" +
+      mk.corrInfo.eot.toFixed(1) + "分＝計" + total.toFixed(1) + "分を時柱・日界判定に適用（補正後 " +
+      String(mk.adjTime.hh).padStart(2,"0") + ":" + String(mk.adjTime.mm).padStart(2,"0") + "）。");
+  }
+  if(!mk.input.timeKnown){
+    notes.push("出生時刻不明のため時柱を省略し、年月日は正午と仮定して計算しています（節入り当日の生まれでなければ三柱に影響はありません）。");
+  }
+  $("meishikiNote").textContent = notes.join(" ");
+
+  // 五行バランス
+  const cnt = gogyoCount(mk);
+  const total = cnt.reduce((a,b)=>a+b,0);
+  const gbox = $("gogyoBox"); gbox.innerHTML = "";
+  cnt.forEach((c,i)=>{
+    const pct = total ? Math.round(c / total * 100) : 0;
+    gbox.innerHTML += '<div class="gobar"><span class="gname">' + ELEM_NAMES[i] +
+      '</span><span class="gtrack"><span class="gfill" style="width:' + pct +
+      '%;background:' + ELEM_COLORS[i] + '"></span></span><span class="gnum">' + c + '</span></div>';
+  });
+  const missing = [], excess = [];
+  cnt.forEach((c,i)=>{ if(c===0) missing.push(ELEM_NAMES[i]); if(c>=4) excess.push(ELEM_NAMES[i]); });
+  let gnote = "天干4つと地支の本気" + (mk.pillars.hour ? "4つ" : "3つ") + "を数えた簡易バランスです。";
+  if(missing.length) gnote += "命式に「" + missing.join("・") + "」の気が見当たらず、この五行が巡る年や環境（色・方位・職種など）が補いになるとされます。";
+  if(excess.length) gnote += "「" + excess.join("・") + "」の気が突出しており、命式の個性の源である一方、偏りとして健康・性格面に表れやすいとされます。";
+  $("gogyoNote").textContent = gnote;
+
+  // 身強・身弱
+  const st = strengthJudge(mk);
+  mk._strength = st;
+  $("strengthBox").innerHTML = "簡易判定：<b>" + st.label + "</b>（スコア" + st.score + "）" +
+    (st.detail.length ? "／" + st.detail.join("・") : "") +
+    "<br>※身強身弱は本来、干合・支合・通根まで含めた総合判断です。ここでは月令と生扶の数による簡易方式（コメント参照）を採用しています。";
+}
+
+/* ---- 各論テキスト ---- */
+function renderTopics(mk){
+  const d = mk.pillars.day.stem;
+  const genmei = tsuhenOf(d, mk.zokan.month);
+  const cnt = gogyoCount(mk);
+  const st = mk._strength;
+
+  let workExtra = "";
+  if(st.cls === "weak") workExtra = "なお身弱傾向の命式なので、完全な単独行動より、信頼できる組織やチーム、後ろ盾のある形で裁量を持つほうが力を発揮しやすいと考えられます。";
+  if(st.cls === "strong") workExtra = "なお身強傾向の命式なので、管理されるより裁量と責任をセットで持てる立場のほうが、持ち前の力が素直に出やすいと考えられます。";
+
+  const topics = [
+    ["本人の資質・性格", [NIKKAN_TEXT[d], GENMEI_TEXT[genmei]]],
+    ["仕事・適職", [WORK_TEXT[genmei] + workExtra]],
+    ["お金・金運", [moneyText(mk)]],
+    ["恋愛・結婚（パートナーシップ）", [loveText(mk)]],
+    ["対人関係", [peopleText(mk)]],
+    ["健康", [healthText(mk, cnt)]],
+    ["人生全体の運気の波", [lifewaveText(mk)]]
+  ];
+  const box = $("topicsBox"); box.innerHTML = "";
+  for(const [title, paras] of topics){
+    const div = document.createElement("div");
+    div.className = "topic";
+    div.innerHTML = "<h3>" + title + "</h3>" + paras.map(p => "<p>" + p + "</p>").join("");
+    box.appendChild(div);
+  }
+}
+
+/* ---- 大運と運気の波 ---- */
+function favorableGroups(st){
+  // 身強：自分の力を外に出す運（食傷・財・官）が追い風
+  // 身弱：自分を支える運（印・比劫）が追い風
+  if(st.cls === "strong") return [1,2,3];
+  if(st.cls === "weak")   return [0,4];
+  return [];  // 中和は特定の偏りなし
+}
+function lifewaveText(mk){
+  const st = mk._strength;
+  const tu = calcTaiun(mk);
+  mk._taiun = tu;
+  const d = mk.pillars.day.stem;
+  const fav = favorableGroups(st);
+  const favPeriods = tu.list.filter(p => fav.includes(Math.floor(tsuhenOf(d, p.stem) / 2)));
+  let t = "大運（10年ごとの運の節目）は" + tu.startAge + "歳から始まり、" +
+    (tu.forward ? "順行" : "逆行") + "で巡ります。";
+  if(st.cls === "strong"){
+    t += "身強傾向の命式では、自分の力を外へ放出する食傷・財・官の大運が追い風とされます。";
+  } else if(st.cls === "weak"){
+    t += "身弱傾向の命式では、自分を養い支える印星・比劫の大運が追い風とされます。逆に消耗の大きい時期は、拡大より足場固めが実りやすいでしょう。";
+  } else {
+    t += "中和に近い命式は五行の巡りに対する耐性が高く、極端な凶運期が出にくい代わりに、どの時期も自分の選択の比重が大きいタイプとされます。";
+  }
+  if(favPeriods.length){
+    const ranges = favPeriods.map(p => p.fromAge + "〜" + p.toAge + "歳").join("、");
+    t += "今回の大運の並びでは、" + ranges + "の期間が特に運気の波に乗りやすい時期の目安です（下表の色付き期間）。";
+  } else if(st.cls !== "neutral"){
+    t += "今回の8期の並びには典型的な追い風期が少なめですが、これは凶という意味ではなく、外的な後押しより自力の積み上げが主役になる人生設計を示すと読めます。";
+  }
+  t += "なお喜神（本当に必要な五行）の厳密な特定は格局判断を要するため、ここでは身強身弱に基づく簡易方式で目安を示しています。";
+  return t;
+}
+function renderTaiun(mk){
+  const tu = mk._taiun || calcTaiun(mk);
+  const d = mk.pillars.day.stem;
+  const st = mk._strength;
+  const fav = favorableGroups(st);
+  $("taiunText").innerHTML = "<p style='font-size:.9rem'>" +
+    "立運：" + tu.startAge + "歳（節入りまで" + tu.days + "日 ÷ 3）／" +
+    (tu.forward ? "順行" : "逆行") + "（" +
+    (STEM_YANG[mk.pillars.year.stem] ? "陽" : "陰") + "年干 × " +
+    (mk.input.gender === "M" ? "男性" : "女性") + "）</p>";
+  let html = "<tr><th>年齢</th><th>大運</th><th>通変星</th><th>十二運</th></tr>";
+  for(const p of tu.list){
+    const t = tsuhenOf(d, p.stem);
+    const isFav = fav.includes(Math.floor(t / 2));
+    html += "<tr" + (isFav ? " class='fav'" : "") + "><td>" + p.fromAge + "〜" + p.toAge +
+      "歳</td><td>" + STEMS[p.stem] + BRANCHES[p.branch] + "</td><td>" + TSUHEN[t] +
+      "</td><td>" + JUNIUN[juniunOf(d, p.branch)] + "</td></tr>";
+  }
+  $("taiunTable").innerHTML = html;
+}
+
+/* ---- 流年 ---- */
+function renderRyunen(mk){
+  const ty = Number($("targetYear").value);
+  const card = $("ryunenCard");
+  if(!ty || ty < 1900 || ty > 2099){ card.style.display = "none"; return; }
+  card.style.display = "block";
+  const r = calcRyunen(ty);
+  const d = mk.pillars.day.stem;
+  const t = tsuhenOf(d, r.stem);
+  const un = JUNIUN[juniunOf(d, r.branch)];
+  $("ryunenTitle").textContent = ty + "年の運勢（流年：" + STEMS[r.stem] + BRANCHES[r.branch] + "）";
+  let html = "<p style='font-size:.9rem'>歳運の干は日干から見て<b>" + TSUHEN[t] +
+    "</b>、支は十二運の<b>" + un + "</b>（" + JUNIUN_SHORT[un] + "）にあたります。" +
+    "※流年の干支は立春で切り替わります。年初〜立春前は前年の干支の影響下です。</p>";
+  html += "<div class='topic'><h3>この年の基調</h3><p>" + RYUNEN_TEXT[t] + "</p></div>";
+
+  // 命式との作用（干合・支冲・支合）
+  const inter = [];
+  if(isKango(r.stem, d)){
+    inter.push("歳運の干が日干と干合する年です。新しい縁・役割・契約との結びつきが生まれやすい一方、本来の自分らしさが一時的に変質しやすい暗示もあり、大きな決断は条件をよく確かめてからが安全とされます。");
+  }
+  if(isChu(r.branch, mk.pillars.day.branch)){
+    inter.push("歳運の支が日支と冲（向かい合う関係）になる年です。住まい・職場・パートナーシップなど身辺に変化や移動が起きやすい年回りとされ、受け身で揺さぶられるより、自分から動く計画に変えると流れに乗りやすいでしょう。");
+  }
+  if(isChu(r.branch, mk.pillars.year.branch)){
+    inter.push("歳運の支が年支と冲になる年です。所属する環境・実家・ルーツに関わる変化や、生活基盤の切り替わりが起きやすい暗示とされます。");
+  }
+  if(isShigo(r.branch, mk.pillars.day.branch)){
+    inter.push("歳運の支が日支と支合する年です。人との縁が結ばれやすく、協力関係やパートナーシップが深まりやすい年回りとされます。");
+  }
+  if(inter.length){
+    html += "<div class='topic'><h3>命式との作用</h3>" + inter.map(s => "<p>" + s + "</p>").join("") + "</div>";
+  }
+  $("ryunenBox").innerHTML = html;
+}
+
+/* ============================================================
+   姓名判断の描画
+   ============================================================ */
+function buildSeimeiChips(sei, mei){
+  const mode = $("seimeiMode").value;
+  $("modeBadge").textContent = mode === "A" ? "熊崎式（旧字体基準）" : "現代式（実画数）";
+  function build(boxId, str, kind){
+    const box = $(boxId); box.innerHTML = "";
+    [...str].forEach((ch, i) => {
+      const s = strokeOf(ch, mode);
+      const div = document.createElement("div");
+      div.className = "chip" + (s === null ? " unknown" : "");
+      div.innerHTML = '<div class="ch">' + ch + '</div>' +
+        '<input type="number" min="1" max="64" inputmode="numeric" ' +
+        'data-kind="' + kind + '" value="' + (s === null ? "" : s) + '">' +
+        '<div class="lab">' + (s === null ? "画数を入力" : "画") + '</div>';
+      box.appendChild(div);
+    });
+  }
+  build("seiChips", sei, "sei");
+  build("meiChips", mei, "mei");
+  document.querySelectorAll("#seiChips input, #meiChips input").forEach(inp => {
+    inp.addEventListener("input", recalcSeimei);
+  });
+}
+
+function readStrokes(kind){
+  const arr = [];
+  let ok = true;
+  document.querySelectorAll('input[data-kind="' + kind + '"]').forEach(inp => {
+    const v = Number(inp.value);
+    if(!v || v < 1){ ok = false; }
+    arr.push(v);
+  });
+  return ok ? arr : null;
+}
+
+function recalcSeimei(){
+  const mode = $("seimeiMode").value;
+  const seiArr = readStrokes("sei");
+  const meiArr = readStrokes("mei");
+  const tbl = $("gokaTable"), texts = $("gokaTexts");
+  if(!seiArr || !meiArr){
+    tbl.innerHTML = "";
+    texts.innerHTML = "<p class='err'>未入力の画数があります。赤枠の文字に画数を入力してください。</p>";
+    $("sansaiBox").innerHTML = "";
+    return;
+  }
+  const g = calcGokaku(seiArr, meiArr, mode);
+  const items = [["天格", g.ten], ["人格", g.jin], ["地格", g.chi], ["外格", g.gai], ["総格", g.sou]];
+
+  let html = "<tr><th>格</th><th>画数</th><th>吉凶</th><th>数意</th></tr>";
+  for(const [name, n] of items){
+    const nn = normSuu(n);
+    const [rate, kw] = SUI_TABLE[nn];
+    html += "<tr><td>" + name + "</td><td>" + n + (nn !== n ? "（" + nn + "として判断）" : "") +
+      "</td><td class='rate " + RATE_CLS[rate] + "'>" + RATE_NAME[rate] +
+      "</td><td style='text-align:left'>" + kw + "</td></tr>";
+  }
+  tbl.innerHTML = html;
+
+  texts.innerHTML = "";
+  for(const [name, n] of items){
+    const nn = normSuu(n);
+    const [rate, kw] = SUI_TABLE[nn];
+    const div = document.createElement("div");
+    div.className = "topic";
+    div.innerHTML = "<h3>" + name + "（" + n + "画・" + RATE_NAME[rate] + "）</h3>" +
+      "<p>" + KAKU_ROLE[name] + "</p>" +
+      "<p>この格に置かれた" + nn + "画は「" + kw + "」の数意を持つとされます。" + RATE_TEXT[rate] + "</p>";
+    texts.appendChild(div);
+  }
+
+  $("sansaiBox").innerHTML = "<p style='font-size:.92rem'>" + sansaiText(g.ten, g.jin, g.chi) + "</p>";
+
+  $("seimeiFootNote").textContent = (mode === "A")
+    ? "モードA：旧字体（康熙字典）基準の画数・一字姓一字名への霊数加算あり・漢数字（一〜十）は字義の数で計算しています。一般的な辞書の画数（新字体実画数）とは異なる字があります。専門家の鑑定と照合する際は、相手が旧字体・新字体どちらの基準かを必ず確認してください。"
+    : "モードB：新字体の実画数・霊数なし・漢数字も実画数で計算しています。熊崎式原典の数え方とは異なります。";
+}
+
+// 姓名判断モードを変えたら再構築
+$("seimeiMode").addEventListener("change", function(){
+  const sei = $("sei").value.replace(/[\s　]/g, "");
+  const mei = $("mei").value.replace(/[\s　]/g, "");
+  if(sei && mei && $("results").style.display === "block"){
+    buildSeimeiChips(sei, mei);
+    recalcSeimei();
+  }
+});
+</script>
+</body>
+</html>
